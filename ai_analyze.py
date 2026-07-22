@@ -29,7 +29,7 @@ import requests
 from google import genai
 
 DATA_PATH = "data/data.json"
-MODEL = "gemini-2.5-flash-lite"  # 무료 티어에서 일일 한도가 가장 넉넉한 모델
+MODEL = "gemini-flash-lite-latest"  # 구글이 최신 버전으로 자동 연결해주는 별칭
 
 HEADERS = {
     "User-Agent": (
