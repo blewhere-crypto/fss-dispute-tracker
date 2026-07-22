@@ -7,14 +7,13 @@
 사용법:
     python scraper.py                 # 전체 크롤링 후 data/data.json 저장
     python scraper.py --max-pages 3   # 테스트용으로 앞 3페이지만
-    python scraper.py --detail        # 상세 페이지(짧은 설명글)까지 수집 (느림)
+    python scraper.py --detail        # 상세 페이지(요약글 + hwp 첨부링크)까지 수집
 
 주의:
 - 사이트 구조는 2026-07 기준으로 확인한 것이며, 금감원이 페이지 구조를 바꾸면
   parse_list()의 셀렉터를 다시 맞춰야 할 수 있습니다.
-- 실제 조정결정문 '전문'은 첨부된 .hwp 파일 안에 있습니다. 이 스크립트는
-  목록 정보 + (옵션) 상세페이지 요약글만 수집합니다.
-- 서버 부담을 줄이기 위해 요청 사이 delay를 꼭 유지하세요.
+- 이 스크립트는 목록/요약/첨부파일 링크까지만 수집합니다. hwp 본문 텍스트 추출과
+  AI 분석은 ai_analyze.py가 이어받아 처리합니다 (기존 분석 결과는 건드리지 않음).
 """
 
 import argparse
@@ -34,19 +33,14 @@ HEADERS = {
     )
 }
 
-# 대분류 코드 (cl1Cd)
-CATEGORY_MAP = {
-    "": "전체",
-    "A": "은행ㆍ중소서민",
-    "B": "보험",
-    "C": "금융투자",
-}
-
+CATEGORY_MAP = {"": "전체", "A": "은행ㆍ중소서민", "B": "보험", "C": "금융투자"}
 KST = timezone(timedelta(hours=9))
 
 
-def fetch_list_page(session: requests.Session, page_index: int = 1) -> str:
+def fetch_list_page(session: requests.Session, page_index: int = 1, cl1cd: str = "") -> str:
     params = {"viewType": "BODY", "pageIndex": page_index}
+    if cl1cd:
+        params["cl1Cd"] = cl1cd
     resp = session.get(f"{BASE}/list.do", params=params, headers=HEADERS, timeout=15)
     resp.raise_for_status()
     resp.encoding = "utf-8"
@@ -54,7 +48,6 @@ def fetch_list_page(session: requests.Session, page_index: int = 1) -> str:
 
 
 def get_total_pages(html: str) -> int:
-    # "전체 812건 [ 1 /82페이지 ]" 형태에서 총 페이지 수 추출
     m = re.search(r"\[\s*\d+\s*/\s*(\d+)\s*페이지\s*\]", html)
     return int(m.group(1)) if m else 1
 
@@ -103,57 +96,73 @@ def parse_list(html: str):
     return rows
 
 
-def fetch_detail_summary(session: requests.Session, ntt_id: str) -> str:
-    """상세 페이지의 짧은 안내 문구(요약)를 가져온다. 실패하면 빈 문자열."""
+def fetch_detail(session: requests.Session, ntt_id: str):
+    """상세 페이지에서 요약 문구 + hwp 첨부파일 다운로드 링크를 가져온다."""
+    result = {"summary": "", "attachments": []}
     try:
         params = {"nttId": ntt_id, "viewType": "BODY", "pageIndex": 1}
         resp = session.get(f"{BASE}/view.do", params=params, headers=HEADERS, timeout=15)
         resp.raise_for_status()
         resp.encoding = "utf-8"
         soup = BeautifulSoup(resp.text, "html.parser")
-        # 본문 요약 문단 후보를 찾는다 (사이트 구조 변경 시 조정 필요)
-        candidates = soup.select("div, p")
-        best = ""
-        for c in candidates:
+
+        for c in soup.select("div, p"):
             text = c.get_text(" ", strip=True)
             if len(text) > 30 and ("금융분쟁조정위원회" in text or "조정결정" in text or "등록합니다" in text):
-                best = text
+                result["summary"] = text
                 break
-        return best
+
+        for a in soup.select("a[href*='fileDown.do']"):
+            href = a["href"]
+            name = a.get_text(strip=True)
+            if href.startswith("/"):
+                href = "https://www.fss.or.kr" + href
+            if name and href not in [x["url"] for x in result["attachments"]]:
+                result["attachments"].append({"name": name, "url": href})
     except Exception:
-        return ""
+        pass
+    return result
 
 
-def crawl_all(max_pages=None, with_detail=False, delay=0.6):
+def crawl_all(max_pages=None, with_detail=False, delay=0.6, cl1cd="C"):
+    """total_pages 텍스트 파싱에 의존하지 않고, 빈 페이지가 나올 때까지 계속 다음
+    페이지를 읽어온다 (사이트 문구가 바뀌어도 안전하게 동작하도록).
+    cl1cd 기본값 "C"는 금융투자 분야만 가져오도록 하는 필터입니다
+    (""=전체, "A"=은행ㆍ중소서민, "B"=보험, "C"=금융투자)."""
     session = requests.Session()
-    first_html = fetch_list_page(session, 1)
-    total_pages = get_total_pages(first_html)
-    if max_pages:
-        total_pages = min(total_pages, max_pages)
-
-    all_rows = parse_list(first_html)
-    for page in range(2, total_pages + 1):
-        html = fetch_list_page(session, page)
-        all_rows.extend(parse_list(html))
+    all_rows = []
+    page = 1
+    hard_cap = max_pages or 300  # 안전장치: 무한루프 방지용 상한
+    while page <= hard_cap:
+        html = fetch_list_page(session, page, cl1cd=cl1cd)
+        rows = parse_list(html)
+        if not rows:
+            break
+        all_rows.extend(rows)
+        page += 1
         time.sleep(delay)
 
     if with_detail:
         for row in all_rows:
             if row["nttId"]:
-                row["summary"] = fetch_detail_summary(session, row["nttId"])
+                detail = fetch_detail(session, row["nttId"])
+                row["summary"] = detail["summary"]
+                row["attachments"] = detail["attachments"]
                 time.sleep(delay)
 
     return all_rows
 
 
 def build_stats(cases):
-    by_region, by_type, by_month = {}, {}, {}
+    by_region, by_type, by_month, keywords = {}, {}, {}, {}
     for c in cases:
         by_region[c["region"]] = by_region.get(c["region"], 0) + 1
         by_type[c["type"]] = by_type.get(c["type"], 0) + 1
-        month = c["date"][:7] if c["date"] else "unknown"
+        month = c["date"][:7] if c.get("date") else "unknown"
         by_month[month] = by_month.get(month, 0) + 1
-    return {"by_region": by_region, "by_type": by_type, "by_month": by_month}
+        for kw in (c.get("analysis") or {}).get("keywords", []):
+            keywords[kw] = keywords.get(kw, 0) + 1
+    return {"by_region": by_region, "by_type": by_type, "by_month": by_month, "keywords": keywords}
 
 
 def main():
@@ -161,9 +170,28 @@ def main():
     parser.add_argument("--max-pages", type=int, default=None)
     parser.add_argument("--detail", action="store_true")
     parser.add_argument("--out", default="data/data.json")
+    parser.add_argument("--category", default="C",
+                         help='""=전체, "A"=은행ㆍ중소서민, "B"=보험, "C"=금융투자(기본값)')
     args = parser.parse_args()
 
-    cases = crawl_all(max_pages=args.max_pages, with_detail=args.detail)
+    import os
+    existing = {}
+    if os.path.exists(args.out):
+        try:
+            with open(args.out, "r", encoding="utf-8") as f:
+                prev = json.load(f)
+            for c in prev.get("cases", []):
+                if c.get("nttId"):
+                    existing[c["nttId"]] = c
+        except Exception:
+            pass
+
+    cases = crawl_all(max_pages=args.max_pages, with_detail=args.detail, cl1cd=args.category)
+    for c in cases:
+        old = existing.get(c.get("nttId"))
+        if old and old.get("analysis"):
+            c["analysis"] = old["analysis"]
+
     cases.sort(key=lambda c: c["date"], reverse=True)
 
     payload = {
@@ -173,7 +201,6 @@ def main():
         "cases": cases,
     }
 
-    import os
     os.makedirs(os.path.dirname(args.out) or ".", exist_ok=True)
     with open(args.out, "w", encoding="utf-8") as f:
         json.dump(payload, f, ensure_ascii=False, indent=2)
