@@ -1,0 +1,138 @@
+{
+  "updated_at": "2026-07-22T08:00:00+09:00",
+  "note": "초기 시드 데이터 (실제 812건 중 최신 10건 샘플). scraper.py 실행 시 전체로 교체됩니다.",
+  "total": 10,
+  "stats": {
+    "by_region": {
+      "은행ㆍ중소서민": 2,
+      "금융투자": 7,
+      "보험": 1
+    },
+    "by_type": {
+      "신용카드": 1,
+      "자산운용/투자자문": 7,
+      "보험기타": 1,
+      "기타": 1
+    },
+    "by_month": {
+      "2026-05": 3,
+      "2024-06": 1,
+      "2023-11": 1,
+      "2023-08": 1,
+      "2023-05": 3,
+      "2023-01": 1
+    }
+  },
+  "cases": [
+    {
+      "num": "812",
+      "region": "은행ㆍ중소서민",
+      "type": "신용카드",
+      "title": "(신용카드사례) 여행상품에 대한 할부거래법상 청약철회권 행사 가능여부 등",
+      "dept": "소비자권익보호국",
+      "date": "2026-05-20",
+      "url": "https://www.fss.or.kr/fss/bbs/B0000390/view.do?nttId=217927&viewType=BODY&pageIndex=1",
+      "nttId": "217927",
+      "views": "125"
+    },
+    {
+      "num": "811",
+      "region": "금융투자",
+      "type": "자산운용/투자자문",
+      "title": "(증권기타사례) 사모펀드 불완전판매로 인한 손해배상책임 등",
+      "dept": "소비자권익보호국",
+      "date": "2026-05-20",
+      "url": "https://www.fss.or.kr/fss/bbs/B0000390/view.do?nttId=217926&viewType=BODY&pageIndex=1",
+      "nttId": "217926",
+      "views": "96"
+    },
+    {
+      "num": "810",
+      "region": "금융투자",
+      "type": "자산운용/투자자문",
+      "title": "(증권기타사례) 사모펀드 불완전판매로 인한 손해배상책임 등",
+      "dept": "소비자권익보호국",
+      "date": "2026-05-20",
+      "url": "https://www.fss.or.kr/fss/bbs/B0000390/view.do?nttId=217925&viewType=BODY&pageIndex=1",
+      "nttId": "217925",
+      "views": "95"
+    },
+    {
+      "num": "809",
+      "region": "금융투자",
+      "type": "자산운용/투자자문",
+      "title": "(증권기타사례)사모펀드 불완전판매로 인한 손해배상책임 등",
+      "dept": "금융민원국",
+      "date": "2024-06-14",
+      "url": "https://www.fss.or.kr/fss/bbs/B0000390/view.do?nttId=136595&viewType=BODY&pageIndex=1",
+      "nttId": "136595",
+      "views": "16627"
+    },
+    {
+      "num": "808",
+      "region": "보험",
+      "type": "보험기타",
+      "title": "(보험기타사례) 일본뇌염의 상해사고 인정여부",
+      "dept": "금융민원총괄국",
+      "date": "2023-11-24",
+      "url": "https://www.fss.or.kr/fss/bbs/B0000390/view.do?nttId=131672&viewType=BODY&pageIndex=1",
+      "nttId": "131672",
+      "views": "17585"
+    },
+    {
+      "num": "807",
+      "region": "금융투자",
+      "type": "자산운용/투자자문",
+      "title": "(증권기타사례) 사모펀드 불완전판매로 인한 손해배상책임 등",
+      "dept": "금융민원총괄국",
+      "date": "2023-08-31",
+      "url": "https://www.fss.or.kr/fss/bbs/B0000390/view.do?nttId=129983&viewType=BODY&pageIndex=1",
+      "nttId": "129983",
+      "views": "15343"
+    },
+    {
+      "num": "806",
+      "region": "금융투자",
+      "type": "자산운용/투자자문",
+      "title": "(증권기타사례) 특정금전신탁 환매 중단에 대한 판매사의 책임 등(2)",
+      "dept": "금융민원총괄국",
+      "date": "2023-05-08",
+      "url": "https://www.fss.or.kr/fss/bbs/B0000390/view.do?nttId=127577&viewType=BODY&pageIndex=1",
+      "nttId": "127577",
+      "views": "14902"
+    },
+    {
+      "num": "805",
+      "region": "금융투자",
+      "type": "자산운용/투자자문",
+      "title": "(증권기타사례) 특정금전신탁 환매 중단에 대한 판매사의 책임 등(1)",
+      "dept": "금융민원총괄국",
+      "date": "2023-05-08",
+      "url": "https://www.fss.or.kr/fss/bbs/B0000390/view.do?nttId=127566&viewType=BODY&pageIndex=1",
+      "nttId": "127566",
+      "views": "14304"
+    },
+    {
+      "num": "804",
+      "region": "금융투자",
+      "type": "자산운용/투자자문",
+      "title": "(증권기타사례) 사모펀드 불완전판매로 인한 손해배상책임 등",
+      "dept": "금융민원총괄국",
+      "date": "2023-05-08",
+      "url": "https://www.fss.or.kr/fss/bbs/B0000390/view.do?nttId=127565&viewType=BODY&pageIndex=1",
+      "nttId": "127565",
+      "views": "14394"
+    },
+    {
+      "num": "803",
+      "region": "은행ㆍ중소서민",
+      "type": "기타",
+      "title": "(은행기타사례)보이스피싱 지급정지 업무상 과실로 인한 손해배상책임 여부",
+      "dept": "금융민원총괄국",
+      "date": "2023-01-04",
+      "url": "https://www.fss.or.kr/fss/bbs/B0000390/view.do?nttId=64821&viewType=BODY&pageIndex=1",
+      "nttId": "64821",
+      "views": "18173"
+    }
+  ]
+}
