@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>금융분쟁 조정사례 대장</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@500;700&family=Noto+Sans+KR:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
+
+  :root{
+    --ink:#1c2333;
+    --navy:#22335c;
+    --navy-deep:#141d33;
+    --paper:#f6f3ec;
+    --paper-line:#e4ddcc;
+    --card:#ffffff;
+    --brass:#a67c3d;
+    --brass-soft:#efe3cb;
+    --rust:#a63d2f;
+    --slate:#5b6274;
+    --bank:#22335c;
+    --insure:#a67c3d;
+    --invest:#a63d2f;
+    --etc:#5b6274;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Noto Sans KR',sans-serif;
+    background-image:
+      linear-gradient(var(--paper-line) 1px, transparent 1px);
+    background-size:100% 42px;
+  }
+
+  header{
+    background:var(--navy-deep);
+    color:var(--paper);
+    padding:36px 32px 28px;
+    position:relative;
+    overflow:hidden;
+  }
+  header::after{
+    content:"";
+    position:absolute; inset:0;
+    background:repeating-linear-gradient(135deg, rgba(255,255,255,0.03) 0 2px, transparent 2px 14px);
+  }
+  .eyebrow{
+    font-family:'JetBrains Mono',monospace;
+    letter-spacing:.18em;
+    font-size:11px;
+    color:var(--brass-soft);
+    text-transform:uppercase;
+    margin-bottom:10px;
+  }
+  h1{
+    font-family:'Noto Serif KR',serif;
+    font-weight:700;
+    font-size:clamp(26px,4vw,38px);
+    margin:0 0 6px;
+    position:relative;
+  }
+  header p.sub{
+    margin:0;
+    color:#c7cde0;
+    font-size:14px;
+    position:relative;
+  }
+  .updated{
+    font-family:'JetBrains Mono',monospace;
+    font-size:12px;
+    color:var(--brass-soft);
+    margin-top:16px;
+    position:relative;
+  }
+
+  .stats-strip{
+    display:flex;
+    gap:0;
+    background:var(--card);
+    margin:-1px 32px 0;
+    border:1px solid var(--paper-line);
+    border-radius:2px;
+    overflow:hidden;
+    flex-wrap:wrap;
+  }
+  .stat{
+    flex:1;
+    min-width:140px;
+    padding:16px 20px;
+    border-right:1px solid var(--paper-line);
+  }
+  .stat:last-child{border-right:none;}
+  .stat .num{
+    font-family:'Noto Serif KR',serif;
+    font-size:26px;
+    font-weight:700;
+    color:var(--navy);
+  }
+  .stat .label{
+    font-size:12px;
+    color:var(--slate);
+    margin-top:2px;
+  }
+
+  main{max-width:1080px; margin:0 auto; padding:28px 32px 80px;}
+
+  .controls{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    align-items:center;
+    margin-bottom:22px;
+  }
+  .search-box{
+    flex:1;
+    min-width:220px;
+    position:relative;
+  }
+  .search-box input{
+    width:100%;
+    padding:11px 14px 11px 38px;
+    border:1px solid var(--paper-line);
+    background:var(--card);
+    border-radius:2px;
+    font-size:14px;
+    font-family:inherit;
+    color:var(--ink);
+  }
+  .search-box input:focus{outline:2px solid var(--navy); outline-offset:-1px;}
+  .search-box::before{
+    content:"⌕";
+    position:absolute; left:12px; top:50%; transform:translateY(-50%);
+    color:var(--slate); font-size:16px;
+  }
+  select{
+    padding:11px 12px;
+    border:1px solid var(--paper-line);
+    background:var(--card);
+    border-radius:2px;
+    font-family:inherit;
+    font-size:13px;
+    color:var(--ink);
+  }
+
+  .tabs{display:flex; gap:6px; margin-bottom:18px; flex-wrap:wrap;}
+  .tab{
+    font-family:'JetBrains Mono',monospace;
+    font-size:12px;
+    padding:7px 14px;
+    border:1px solid var(--paper-line);
+    background:var(--card);
+    border-radius:2px;
+    cursor:pointer;
+    color:var(--slate);
+    user-select:none;
+  }
+  .tab.active{
+    background:var(--navy);
+    border-color:var(--navy);
+    color:var(--paper);
+  }
+
+  .count-row{
+    font-size:13px;
+    color:var(--slate);
+    margin-bottom:10px;
+  }
+  .count-row b{color:var(--ink);}
+
+  .case{
+    display:flex;
+    background:var(--card);
+    border:1px solid var(--paper-line);
+    border-left:5px solid var(--etc);
+    margin-bottom:10px;
+    border-radius:2px;
+    transition:box-shadow .15s ease, transform .15s ease;
+  }
+  .case:hover{ box-shadow:0 4px 14px rgba(20,29,51,0.08); transform:translateY(-1px); }
+  .case.bank{border-left-color:var(--bank);}
+  .case.insure{border-left-color:var(--insure);}
+  .case.invest{border-left-color:var(--invest);}
+
+  .case a{ text-decoration:none; color:inherit; display:flex; width:100%; padding:16px 18px; gap:16px; align-items:flex-start;}
+
+  .case-id{
+    font-family:'JetBrains Mono',monospace;
+    font-size:12px;
+    color:var(--slate);
+    min-width:70px;
+    padding-top:2px;
+  }
+  .case-body{flex:1; min-width:0;}
+  .case-tags{display:flex; gap:8px; margin-bottom:6px; flex-wrap:wrap;}
+  .tag{
+    font-size:11px;
+    font-family:'JetBrains Mono',monospace;
+    padding:2px 8px;
+    border-radius:20px;
+    background:var(--paper);
+    border:1px solid var(--paper-line);
+    color:var(--slate);
+  }
+  .case-title{
+    font-size:15px;
+    font-weight:500;
+    line-height:1.5;
+    color:var(--ink);
+  }
+  .case-meta{
+    font-size:12px;
+    color:var(--slate);
+    margin-top:6px;
+    font-family:'JetBrains Mono',monospace;
+  }
+
+  .empty{
+    text-align:center;
+    padding:60px 20px;
+    color:var(--slate);
+    font-size:14px;
+  }
+
+  footer{
+    text-align:center;
+    padding:24px;
+    font-size:12px;
+    color:var(--slate);
+  }
+
+  @media (max-width:600px){
+    header{padding:26px 18px 20px;}
+    main{padding:20px 16px 60px;}
+    .stats-strip{margin:-1px 16px 0;}
+    .case a{padding:14px;}
+    .case-id{min-width:50px; font-size:11px;}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="eyebrow">FSS · 금융분쟁조정위원회</div>
+  <h1>분쟁조정사례 대장</h1>
+  <p class="sub">금융감독원 분쟁조정사례를 매일 수집해 한 곳에서 검색·열람합니다</p>
+  <div class="updated" id="updatedAt">최종 업데이트 확인 중…</div>
+</header>
+
+<div class="stats-strip" id="statsStrip"></div>
+
+<main>
+  <div class="controls">
+    <div class="search-box">
+      <input type="text" id="searchInput" placeholder="제목으로 검색 (예: 보이스피싱, 사모펀드, 실손보험)">
+    </div>
+    <select id="typeFilter"><option value="">유형 전체</option></select>
+    <select id="sortOrder">
+      <option value="desc">최신순</option>
+      <option value="asc">오래된순</option>
+    </select>
+  </div>
+
+  <div class="tabs" id="regionTabs">
+    <div class="tab active" data-region="">전체</div>
+    <div class="tab" data-region="은행ㆍ중소서민">은행ㆍ중소서민</div>
+    <div class="tab" data-region="보험">보험</div>
+    <div class="tab" data-region="금융투자">금융투자</div>
+  </div>
+
+  <div class="count-row" id="countRow"></div>
+  <div id="caseList"></div>
+</main>
+
+<footer>
+  데이터 출처: 금융감독원 e-금융민원센터 분쟁조정사례 (매일 자동 수집) · 실제 조정결정문 전문은 각 항목 링크에서 확인하세요
+</footer>
+
+<script>
+// 실제 fss.or.kr에서 확인한 케이스 일부를 샘플로 내장 (data.json 로드 실패 시 대체 표시용)
+const SAMPLE_DATA = {
+  "updated_at": "샘플 데이터 (실제 배포 시 크롤러가 자동 생성)",
+  "total": 10,
+  "cases": [
+    {"num":"812","region":"은행ㆍ중소서민","type":"신용카드","title":"(신용카드사례) 여행상품에 대한 할부거래법상 청약철회권 행사 가능여부 등","dept":"소비자권익보호국","date":"2026-05-20","url":"https://www.fss.or.kr/fss/bbs/B0000390/view.do?nttId=217927&viewType=BODY&pageIndex=1"},
+    {"num":"811","region":"금융투자","type":"자산운용/투자자문","title":"(증권기타사례) 사모펀드 불완전판매로 인한 손해배상책임 등","dept":"소비자권익보호국","date":"2026-05-20","url":"https://www.fss.or.kr/fss/bbs/B0000390/view.do?nttId=217926&viewType=BODY&pageIndex=1"},
+    {"num":"810","region":"금융투자","type":"자산운용/투자자문","title":"(증권기타사례) 사모펀드 불완전판매로 인한 손해배상책임 등","dept":"소비자권익보호국","date":"2026-05-20","url":"https://www.fss.or.kr/fss/bbs/B0000390/view.do?nttId=217925&viewType=BODY&pageIndex=1"},
+    {"num":"809","region":"금융투자","type":"자산운용/투자자문","title":"(증권기타사례) 사모펀드 불완전판매로 인한 손해배상책임 등","dept":"금융민원국","date":"2024-06-14","url":"https://www.fss.or.kr/fss/bbs/B0000390/view.do?nttId=136595&viewType=BODY&pageIndex=1"},
+    {"num":"808","region":"보험","type":"보험기타","title":"(보험기타사례) 일본뇌염의 상해사고 인정여부","dept":"금융민원총괄국","date":"2023-11-24","url":"https://www.fss.or.kr/fss/bbs/B0000390/view.do?nttId=131672&viewType=BODY&pageIndex=1"},
+    {"num":"807","region":"금융투자","type":"자산운용/투자자문","title":"(증권기타사례) 사모펀드 불완전판매로 인한 손해배상책임 등","dept":"금융민원총괄국","date":"2023-08-31","url":"https://www.fss.or.kr/fss/bbs/B0000390/view.do?nttId=129983&viewType=BODY&pageIndex=1"},
+    {"num":"806","region":"금융투자","type":"자산운용/투자자문","title":"(증권기타사례) 특정금전신탁 환매 중단에 대한 판매사의 책임 등(2)","dept":"금융민원총괄국","date":"2023-05-08","url":"https://www.fss.or.kr/fss/bbs/B0000390/view.do?nttId=127577&viewType=BODY&pageIndex=1"},
+    {"num":"805","region":"금융투자","type":"자산운용/투자자문","title":"(증권기타사례) 특정금전신탁 환매 중단에 대한 판매사의 책임 등(1)","dept":"금융민원총괄국","date":"2023-05-08","url":"https://www.fss.or.kr/fss/bbs/B0000390/view.do?nttId=127566&viewType=BODY&pageIndex=1"},
+    {"num":"804","region":"금융투자","type":"자산운용/투자자문","title":"(증권기타사례) 사모펀드 불완전판매로 인한 손해배상책임 등","dept":"금융민원총괄국","date":"2023-05-08","url":"https://www.fss.or.kr/fss/bbs/B0000390/view.do?nttId=127565&viewType=BODY&pageIndex=1"},
+    {"num":"803","region":"은행ㆍ중소서민","type":"기타","title":"(은행기타사례)보이스피싱 지급정지 업무상 과실로 인한 손해배상책임 여부","dept":"금융민원총괄국","date":"2023-01-04","url":"https://www.fss.or.kr/fss/bbs/B0000390/view.do?nttId=64821&viewType=BODY&pageIndex=1"}
+  ]
+};
+
+const REGION_CLASS = {
+  "은행ㆍ중소서민":"bank",
+  "보험":"insure",
+  "금융투자":"invest"
+};
+
+let allCases = [];
+let state = { region:"", type:"", query:"", sort:"desc" };
+
+async function loadData(){
+  try{
+    const res = await fetch('data/data.json', {cache:'no-store'});
+    if(!res.ok) throw new Error('no data.json yet');
+    const json = await res.json();
+    return json;
+  }catch(e){
+    return SAMPLE_DATA;
+  }
+}
+
+function renderStats(cases, updatedAt, isSample){
+  document.getElementById('updatedAt').textContent =
+    isSample ? '⚠ 샘플 데이터 표시 중 — 크롤러 실행 후 data/data.json이 생성되면 자동 교체됩니다'
+             : `최종 업데이트: ${new Date(updatedAt).toLocaleString('ko-KR')}`;
+
+  const byRegion = {};
+  cases.forEach(c => byRegion[c.region] = (byRegion[c.region]||0)+1);
+
+  const strip = document.getElementById('statsStrip');
+  strip.innerHTML = `
+    <div class="stat"><div class="num">${cases.length}</div><div class="label">전체 사례</div></div>
+    <div class="stat"><div class="num">${byRegion['은행ㆍ중소서민']||0}</div><div class="label">은행ㆍ중소서민</div></div>
+    <div class="stat"><div class="num">${byRegion['보험']||0}</div><div class="label">보험</div></div>
+    <div class="stat"><div class="num">${byRegion['금융투자']||0}</div><div class="label">금융투자</div></div>
+  `;
+}
+
+function populateTypeFilter(cases){
+  const types = [...new Set(cases.map(c=>c.type).filter(Boolean))].sort();
+  const sel = document.getElementById('typeFilter');
+  types.forEach(t=>{
+    const opt = document.createElement('option');
+    opt.value = t; opt.textContent = t;
+    sel.appendChild(opt);
+  });
+}
+
+function applyFilters(){
+  let list = allCases.filter(c=>{
+    if(state.region && c.region !== state.region) return false;
+    if(state.type && c.type !== state.type) return false;
+    if(state.query && !c.title.toLowerCase().includes(state.query.toLowerCase())) return false;
+    return true;
+  });
+  list.sort((a,b)=> state.sort==='desc'
+    ? (b.date||'').localeCompare(a.date||'')
+    : (a.date||'').localeCompare(b.date||''));
+  renderList(list);
+}
+
+function renderList(list){
+  document.getElementById('countRow').innerHTML = `<b>${list.length}건</b>의 사례가 조건에 일치합니다`;
+  const container = document.getElementById('caseList');
+  if(list.length===0){
+    container.innerHTML = `<div class="empty">조건에 맞는 사례가 없습니다. 검색어나 필터를 조정해 보세요.</div>`;
+    return;
+  }
+  container.innerHTML = list.map(c=>`
+    <div class="case ${REGION_CLASS[c.region]||''}">
+      <a href="${c.url||'#'}" target="_blank" rel="noopener">
+        <div class="case-id">#${c.num||'—'}</div>
+        <div class="case-body">
+          <div class="case-tags">
+            <span class="tag">${c.region||''}</span>
+            <span class="tag">${c.type||''}</span>
+          </div>
+          <div class="case-title">${c.title}</div>
+          <div class="case-meta">${c.date||''} · ${c.dept||''}</div>
+        </div>
+      </a>
+    </div>
+  `).join('');
+}
+
+document.getElementById('searchInput').addEventListener('input', e=>{
+  state.query = e.target.value; applyFilters();
+});
+document.getElementById('typeFilter').addEventListener('change', e=>{
+  state.type = e.target.value; applyFilters();
+});
+document.getElementById('sortOrder').addEventListener('change', e=>{
+  state.sort = e.target.value; applyFilters();
+});
+document.getElementById('regionTabs').addEventListener('click', e=>{
+  const tab = e.target.closest('.tab');
+  if(!tab) return;
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  tab.classList.add('active');
+  state.region = tab.dataset.region;
+  applyFilters();
+});
+
+(async function init(){
+  const data = await loadData();
+  const isSample = data === SAMPLE_DATA;
+  allCases = data.cases || [];
+  renderStats(allCases, data.updated_at, isSample);
+  populateTypeFilter(allCases);
+  applyFilters();
+})();
+</script>
+</body>
+</html>
