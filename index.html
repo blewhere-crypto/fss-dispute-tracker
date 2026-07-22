@@ -442,8 +442,13 @@ function renderList(){
       <div class="case-analysis">
         ${a ? `
           <div class="analysis-grid">
+            ${a.background ? `<div class="analysis-row"><b>사건개요</b>${a.background}</div>` : ''}
+            ${a.claimant_argument ? `<div class="analysis-row"><b>신청인 주장</b>${a.claimant_argument}</div>` : ''}
+            ${a.respondent_argument ? `<div class="analysis-row"><b>피신청인 주장</b>${a.respondent_argument}</div>` : ''}
             ${a.issue ? `<div class="analysis-row"><b>쟁점</b>${a.issue}</div>` : ''}
+            ${a.reasoning ? `<div class="analysis-row"><b>판단근거</b>${a.reasoning}</div>` : ''}
             ${a.decision ? `<div class="analysis-row"><b>결정요지</b>${a.decision}</div>` : ''}
+            ${a.related_law ? `<div class="analysis-row"><b>관련법령</b>${a.related_law}</div>` : ''}
             ${a.consumer_lesson ? `<div class="analysis-row"><b>시사점</b>${a.consumer_lesson}</div>` : ''}
             ${(a.keywords&&a.keywords.length) ? `<div class="analysis-kw">${a.keywords.map(k=>`<span class="tag">${k}</span>`).join('')}</div>` : ''}
           </div>
