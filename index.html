@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>금융분쟁 조정사례 대장</title>
+<title>금융투자 분쟁조정사례 대장</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@500;700&family=Noto+Sans+KR:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
 
@@ -11,8 +11,14 @@
     --ink:#1c2333; --navy:#22335c; --navy-deep:#141d33;
     --paper:#f6f3ec; --paper-line:#e4ddcc; --card:#ffffff;
     --brass:#a67c3d; --brass-soft:#efe3cb; --rust:#a63d2f; --slate:#5b6274;
-    --bank:#22335c; --insure:#a67c3d; --invest:#a63d2f; --etc:#5b6274;
-    --sage:#5c7a5c;
+    --invest:#a63d2f; --sage:#5c7a5c; --sage-bg:#eaf1ea;
+    --new-bg:#a63d2f; --new-fg:#ffffff;
+  }
+  [data-theme="dark"]{
+    --ink:#e8e6df; --navy:#7f9bd6; --navy-deep:#0c1120;
+    --paper:#181c26; --paper-line:#2c3140; --card:#20242f;
+    --brass:#d8b177; --brass-soft:#3a3222; --rust:#e08a75; --slate:#9aa0b4;
+    --invest:#e08a75; --sage:#8fbf8f; --sage-bg:#213024;
   }
   *{box-sizing:border-box;}
   body{
@@ -20,13 +26,21 @@
     font-family:'Noto Sans KR',sans-serif;
     background-image:linear-gradient(var(--paper-line) 1px, transparent 1px);
     background-size:100% 42px;
+    transition:background-color .2s ease, color .2s ease;
   }
   header{ background:var(--navy-deep); color:var(--paper); padding:36px 32px 28px; position:relative; overflow:hidden; }
   header::after{ content:""; position:absolute; inset:0; background:repeating-linear-gradient(135deg, rgba(255,255,255,0.03) 0 2px, transparent 2px 14px); }
+  .header-top{ display:flex; justify-content:space-between; align-items:flex-start; position:relative; }
   .eyebrow{ font-family:'JetBrains Mono',monospace; letter-spacing:.18em; font-size:11px; color:var(--brass-soft); text-transform:uppercase; margin-bottom:10px; }
-  h1{ font-family:'Noto Serif KR',serif; font-weight:700; font-size:clamp(26px,4vw,38px); margin:0 0 6px; position:relative; }
-  header p.sub{ margin:0; color:#c7cde0; font-size:14px; position:relative; }
+  h1{ font-family:'Noto Serif KR',serif; font-weight:700; font-size:clamp(26px,4vw,38px); margin:0 0 6px; }
+  header p.sub{ margin:0; color:#c7cde0; font-size:14px; }
   .updated{ font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--brass-soft); margin-top:16px; position:relative; }
+  .theme-toggle{
+    background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.2); color:var(--paper);
+    border-radius:20px; padding:8px 14px; font-size:12px; font-family:'JetBrains Mono',monospace;
+    cursor:pointer; flex-shrink:0;
+  }
+  .theme-toggle:hover{ background:rgba(255,255,255,0.16); }
 
   .stats-strip{ display:flex; background:var(--card); margin:-1px 32px 0; border:1px solid var(--paper-line); border-radius:2px; overflow:hidden; flex-wrap:wrap; }
   .stat{ flex:1; min-width:140px; padding:16px 20px; border-right:1px solid var(--paper-line); }
@@ -36,10 +50,7 @@
 
   main{max-width:1080px; margin:0 auto; padding:28px 32px 80px;}
 
-  /* 트렌드 패널 */
-  .trend-panel{
-    display:grid; grid-template-columns:1.3fr 1fr; gap:14px; margin-bottom:28px;
-  }
+  .trend-panel{ display:grid; grid-template-columns:1.3fr 1fr; gap:14px; margin-bottom:14px; }
   @media (max-width:760px){ .trend-panel{grid-template-columns:1fr;} }
   .panel-card{ background:var(--card); border:1px solid var(--paper-line); border-radius:2px; padding:18px 20px; }
   .panel-title{ font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--slate); margin-bottom:14px; }
@@ -50,51 +61,70 @@
   .bar-count{ width:34px; text-align:right; font-family:'JetBrains Mono',monospace; color:var(--slate); }
 
   .kw-cloud{ display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
-  .kw-chip{
-    font-family:'JetBrains Mono',monospace; background:var(--paper); border:1px solid var(--paper-line);
-    border-radius:20px; padding:4px 12px; color:var(--navy); cursor:pointer;
-  }
+  .kw-chip{ font-family:'JetBrains Mono',monospace; background:var(--paper); border:1px solid var(--paper-line); border-radius:20px; padding:4px 12px; color:var(--navy); cursor:pointer; }
   .kw-chip:hover{ background:var(--brass-soft); border-color:var(--brass); }
   .kw-empty{ font-size:12.5px; color:var(--slate); }
 
-  .controls{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:22px; }
+  .line-chart-wrap{ overflow-x:auto; }
+  .line-chart-wrap svg{ display:block; }
+  .lc-dot{ fill:var(--brass); }
+  .lc-line{ fill:none; stroke:var(--brass); stroke-width:2; }
+  .lc-label{ font-family:'JetBrains Mono',monospace; font-size:10px; fill:var(--slate); }
+  .lc-count{ font-family:'JetBrains Mono',monospace; font-size:10px; fill:var(--ink); }
+
+  .quick-filters{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px; align-items:center; }
+  .chip{ font-family:'JetBrains Mono',monospace; font-size:12px; padding:6px 13px; border:1px solid var(--paper-line); background:var(--card); border-radius:20px; cursor:pointer; color:var(--slate); }
+  .chip.active{ background:var(--navy); border-color:var(--navy); color:var(--paper); }
+  .chip.fav{ display:flex; align-items:center; gap:4px; }
+
+  .disclaimer{
+    font-size:12px; color:var(--slate); background:var(--card); border:1px dashed var(--paper-line);
+    border-radius:2px; padding:10px 14px; margin-bottom:18px; line-height:1.5;
+  }
+
+  .controls{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:14px; }
   .search-box{ flex:1; min-width:220px; position:relative; }
   .search-box input{ width:100%; padding:11px 14px 11px 38px; border:1px solid var(--paper-line); background:var(--card); border-radius:2px; font-size:14px; font-family:inherit; color:var(--ink); }
   .search-box input:focus{outline:2px solid var(--navy); outline-offset:-1px;}
   .search-box::before{ content:"⌕"; position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--slate); font-size:16px; }
   select{ padding:11px 12px; border:1px solid var(--paper-line); background:var(--card); border-radius:2px; font-family:inherit; font-size:13px; color:var(--ink); }
+  .share-btn{ padding:11px 14px; border:1px solid var(--paper-line); background:var(--card); border-radius:2px; font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--navy); cursor:pointer; }
+  .share-btn:hover{ background:var(--brass-soft); }
 
-  .tabs{display:flex; gap:6px; margin-bottom:18px; flex-wrap:wrap;}
-  .tab{ font-family:'JetBrains Mono',monospace; font-size:12px; padding:7px 14px; border:1px solid var(--paper-line); background:var(--card); border-radius:2px; cursor:pointer; color:var(--slate); user-select:none; }
-  .tab.active{ background:var(--navy); border-color:var(--navy); color:var(--paper); }
-
-  .count-row{ font-size:13px; color:var(--slate); margin-bottom:10px; }
+  .count-row{ font-size:13px; color:var(--slate); margin-bottom:10px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; }
   .count-row b{color:var(--ink);}
 
-  .case{ background:var(--card); border:1px solid var(--paper-line); border-left:5px solid var(--etc); margin-bottom:10px; border-radius:2px; transition:box-shadow .15s ease; }
+  .case{ background:var(--card); border:1px solid var(--paper-line); border-left:5px solid var(--invest); margin-bottom:10px; border-radius:2px; transition:box-shadow .15s ease; }
   .case:hover{ box-shadow:0 4px 14px rgba(20,29,51,0.08); }
-  .case.bank{border-left-color:var(--bank);}
-  .case.insure{border-left-color:var(--insure);}
-  .case.invest{border-left-color:var(--invest);}
 
-  .case-head{ display:flex; gap:16px; align-items:flex-start; padding:16px 18px; cursor:pointer; }
-  .case-id{ font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--slate); min-width:70px; padding-top:2px; }
+  .case-head{ display:flex; gap:14px; align-items:flex-start; padding:16px 18px; cursor:pointer; }
+  .case-id{ font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--slate); min-width:60px; padding-top:2px; }
   .case-body{flex:1; min-width:0;}
   .case-tags{display:flex; gap:8px; margin-bottom:6px; flex-wrap:wrap; align-items:center;}
   .tag{ font-size:11px; font-family:'JetBrains Mono',monospace; padding:2px 8px; border-radius:20px; background:var(--paper); border:1px solid var(--paper-line); color:var(--slate); }
-  .tag.ai{ background:#eaf1ea; border-color:var(--sage); color:var(--sage); }
+  .tag.ai{ background:var(--sage-bg); border-color:var(--sage); color:var(--sage); }
+  .tag.new{ background:var(--new-bg); border-color:var(--new-bg); color:var(--new-fg); font-weight:600; }
   .case-title{ font-size:15px; font-weight:500; line-height:1.5; color:var(--ink); }
   .case-meta{ font-size:12px; color:var(--slate); margin-top:6px; font-family:'JetBrains Mono',monospace; }
-  .expand-arrow{ margin-left:auto; color:var(--slate); font-size:12px; padding-top:2px; flex-shrink:0; }
+  .case-side{ display:flex; flex-direction:column; align-items:center; gap:8px; flex-shrink:0; }
+  .star-btn{ background:none; border:none; font-size:18px; cursor:pointer; color:var(--paper-line); line-height:1; padding:2px; }
+  .star-btn.active{ color:var(--brass); }
+  .expand-arrow{ color:var(--slate); font-size:12px; }
 
-  .case-analysis{ display:none; padding:0 18px 18px 104px; }
+  .case-analysis{ display:none; padding:0 18px 18px 92px; }
   .case.open .case-analysis{ display:block; }
   .analysis-grid{ border-top:1px dashed var(--paper-line); padding-top:14px; display:grid; gap:10px; }
   .analysis-row{ font-size:13px; line-height:1.6; }
   .analysis-row b{ color:var(--navy); font-family:'Noto Serif KR',serif; margin-right:6px; }
   .analysis-kw{ display:flex; gap:6px; flex-wrap:wrap; margin-top:4px; }
   .no-analysis{ font-size:12.5px; color:var(--slate); font-style:italic; }
+  .ai-disclaimer{ font-size:11px; color:var(--slate); font-style:italic; margin-top:10px; }
   .case-link{ display:inline-block; margin-top:10px; font-size:12.5px; color:var(--navy); text-decoration:underline; }
+
+  .pagination{ display:flex; justify-content:center; align-items:center; gap:6px; margin-top:22px; flex-wrap:wrap; }
+  .page-btn{ font-family:'JetBrains Mono',monospace; font-size:12.5px; padding:7px 12px; border:1px solid var(--paper-line); background:var(--card); border-radius:2px; cursor:pointer; color:var(--ink); min-width:36px; text-align:center; }
+  .page-btn.active{ background:var(--navy); border-color:var(--navy); color:var(--paper); }
+  .page-btn:disabled{ opacity:.4; cursor:default; }
 
   .empty{ text-align:center; padding:60px 20px; color:var(--slate); font-size:14px; }
   footer{ text-align:center; padding:24px; font-size:12px; color:var(--slate); }
@@ -103,16 +133,21 @@
     header{padding:26px 18px 20px;} main{padding:20px 16px 60px;}
     .stats-strip{margin:-1px 16px 0;} .case-head{padding:14px;}
     .case-analysis{padding:0 14px 14px 14px;}
-    .case-id{min-width:50px; font-size:11px;}
+    .case-id{min-width:44px; font-size:11px;}
   }
 </style>
 </head>
 <body>
 
 <header>
-  <div class="eyebrow">FSS · 금융분쟁조정위원회 · 금융투자 분야</div>
-  <h1>금융투자 분쟁조정사례 대장</h1>
-  <p class="sub">금융감독원 금융투자 분쟁조정사례를 매일 수집·AI 분석해 한 곳에서 검색·열람합니다</p>
+  <div class="header-top">
+    <div>
+      <div class="eyebrow">FSS · 금융분쟁조정위원회 · 금융투자 분야</div>
+      <h1>금융투자 분쟁조정사례 대장</h1>
+      <p class="sub">금융감독원 금융투자 분쟁조정사례를 매일 수집·AI 분석해 한 곳에서 검색·열람합니다</p>
+    </div>
+    <button class="theme-toggle" id="themeToggle">🌙 다크모드</button>
+  </div>
   <div class="updated" id="updatedAt">최종 업데이트 확인 중…</div>
 </header>
 
@@ -130,24 +165,34 @@
     </div>
   </div>
 
-  <div class="panel-card" style="margin-bottom:28px;">
+  <div class="panel-card" style="margin-bottom:24px;">
     <div class="panel-title">월별 등록 추이 (최근 12개월)</div>
-    <div id="monthChart"></div>
+    <div class="line-chart-wrap" id="monthChart"></div>
+  </div>
+
+  <div class="disclaimer">
+    ⚠ 사례별 "AI 분석"은 Gemini 모델이 자동 생성한 요약이며 <b>법적 효력이 없는 참고용</b>입니다. 정확한 내용은 반드시 "금감원 원문 보기" 링크에서 원문을 확인하세요.
   </div>
 
   <div class="controls">
     <div class="search-box">
-      <input type="text" id="searchInput" placeholder="제목/키워드로 검색 (예: 보이스피싱, 사모펀드, 실손보험)">
+      <input type="text" id="searchInput" placeholder="제목/키워드로 검색 (예: 사모펀드, 불완전판매, 신탁)">
     </div>
     <select id="typeFilter"><option value="">유형 전체</option></select>
     <select id="sortOrder">
       <option value="desc">최신순</option>
       <option value="asc">오래된순</option>
     </select>
+    <button class="share-btn" id="shareBtn">🔗 현재 조건 링크 복사</button>
   </div>
 
-  <div class="count-row" id="countRow"></div>
+  <div class="quick-filters" id="quickFilters"></div>
+
+  <div class="count-row">
+    <span id="countRow"></span>
+  </div>
   <div id="caseList"></div>
+  <div class="pagination" id="pagination"></div>
 </main>
 
 <footer>
@@ -159,30 +204,72 @@ const SAMPLE_DATA = {
   "updated_at": "샘플 데이터 (실제 배포 시 크롤러 + AI 분석이 자동으로 채웁니다)",
   "total": 3,
   "stats": {
-    "by_type": {"자산운용/투자자문": 5, "신용카드": 1, "보험기타": 1, "기타": 1},
-    "by_month": {"2026-05": 3, "2024-06": 1, "2023-11": 1, "2023-08": 1, "2023-05": 3, "2023-01": 1},
-    "keywords": {"불완전판매": 4, "사모펀드": 3, "손해배상": 3, "청약철회권": 1, "보이스피싱": 1, "실손보험금": 1}
+    "by_type": {"자산운용/투자자문": 5, "신탁": 2, "펀드": 1},
+    "by_month": {"2026-02":2,"2026-03":4,"2026-04":3,"2026-05":6,"2026-06":5,"2026-07":3},
+    "keywords": {"불완전판매": 4, "사모펀드": 3, "손해배상": 3, "설명의무": 2, "신탁": 1}
   },
   "cases": [
-    {"num":"812","region":"은행ㆍ중소서민","type":"신용카드","title":"(신용카드사례) 여행상품에 대한 할부거래법상 청약철회권 행사 가능여부 등","dept":"소비자권익보호국","date":"2026-05-20","url":"https://www.fss.or.kr/fss/bbs/B0000390/view.do?nttId=217927&viewType=BODY&pageIndex=1",
-      "analysis":{"issue":"여행상품 계약 후 할부거래법상 청약철회권을 행사할 수 있는지가 쟁점이 되었습니다.","decision":"조정위원회는 일정 요건 하에 청약철회권 행사가 가능하다고 판단했습니다.","consumer_lesson":"할부로 여행상품을 결제했다면 청약철회 가능 기간과 조건을 미리 확인하는 것이 좋습니다.","keywords":["청약철회권","할부거래법","여행상품"]}},
-    {"num":"811","region":"금융투자","type":"자산운용/투자자문","title":"(증권기타사례) 사모펀드 불완전판매로 인한 손해배상책임 등","dept":"소비자권익보호국","date":"2026-05-20","url":"https://www.fss.or.kr/fss/bbs/B0000390/view.do?nttId=217926&viewType=BODY&pageIndex=1",
+    {"num":"811","type":"자산운용/투자자문","title":"(증권기타사례) 사모펀드 불완전판매로 인한 손해배상책임 등","dept":"소비자권익보호국","date":"2026-07-18","url":"https://www.fss.or.kr/fss/bbs/B0000390/view.do?nttId=217926&viewType=BODY&pageIndex=1",
       "analysis":{"issue":"사모펀드 판매 과정에서 투자위험 설명이 충분했는지가 다투어졌습니다.","decision":"판매사의 설명의무 위반이 인정되어 일부 손해배상 책임이 인정되었습니다.","consumer_lesson":"고위험 투자상품 가입 시 설명 내용을 서면으로 남겨두는 것이 분쟁 시 도움이 됩니다.","keywords":["불완전판매","사모펀드","손해배상","설명의무"]}},
-    {"num":"803","region":"은행ㆍ중소서민","type":"기타","title":"(은행기타사례)보이스피싱 지급정지 업무상 과실로 인한 손해배상책임 여부","dept":"금융민원총괄국","date":"2023-01-04","url":"https://www.fss.or.kr/fss/bbs/B0000390/view.do?nttId=64821&viewType=BODY&pageIndex=1",
+    {"num":"806","type":"신탁","title":"(증권기타사례) 특정금전신탁 환매 중단에 대한 판매사의 책임 등","dept":"금융민원총괄국","date":"2026-05-08","url":"https://www.fss.or.kr/fss/bbs/B0000390/view.do?nttId=127577&viewType=BODY&pageIndex=1",
+      "analysis":{"issue":"신탁 상품 환매가 갑자기 중단된 데 대한 판매사 책임 범위가 쟁점이었습니다.","decision":"판매사의 사전 고지 의무 위반 정도에 따라 배상 비율이 차등 인정되었습니다.","consumer_lesson":"환매 중단 가능성이 있는 상품은 계약 전 관련 조항을 꼼꼼히 확인해야 합니다.","keywords":["신탁","환매중단","판매사책임"]}},
+    {"num":"804","type":"펀드","title":"(증권기타사례) 사모펀드 불완전판매로 인한 손해배상책임 등","dept":"금융민원총괄국","date":"2023-05-08","url":"https://www.fss.or.kr/fss/bbs/B0000390/view.do?nttId=127565&viewType=BODY&pageIndex=1",
       "analysis":null}
   ]
 };
 
-const REGION_CLASS = {"은행ㆍ중소서민":"bank","보험":"insure","금융투자":"invest"};
+const PAGE_SIZE = 15;
 let allCases = [];
-let state = { region:"", type:"", query:"", sort:"desc" };
+let filteredCases = [];
+let currentPage = 1;
+let bookmarks = new Set(JSON.parse(localStorage.getItem('fss_bookmarks') || '[]'));
+let state = { type:"", query:"", sort:"desc", fav:false };
 
+// ---------- URL sync ----------
+function loadStateFromURL(){
+  const p = new URLSearchParams(location.search);
+  state.query = p.get('q') || "";
+  state.type = p.get('type') || "";
+  state.sort = p.get('sort') || "desc";
+  state.fav = p.get('fav') === '1';
+  currentPage = parseInt(p.get('page') || '1', 10) || 1;
+}
+function syncURL(){
+  const p = new URLSearchParams();
+  if(state.query) p.set('q', state.query);
+  if(state.type) p.set('type', state.type);
+  if(state.sort !== 'desc') p.set('sort', state.sort);
+  if(state.fav) p.set('fav', '1');
+  if(currentPage > 1) p.set('page', currentPage);
+  const qs = p.toString();
+  history.replaceState(null, '', qs ? `?${qs}` : location.pathname);
+}
+
+// ---------- theme ----------
+function applyTheme(theme){
+  document.documentElement.setAttribute('data-theme', theme);
+  document.getElementById('themeToggle').textContent = theme === 'dark' ? '☀️ 라이트모드' : '🌙 다크모드';
+  localStorage.setItem('fss_theme', theme);
+}
+document.getElementById('themeToggle').addEventListener('click', ()=>{
+  const cur = document.documentElement.getAttribute('data-theme');
+  applyTheme(cur === 'dark' ? 'light' : 'dark');
+});
+
+// ---------- data ----------
 async function loadData(){
   try{
     const res = await fetch('data/data.json', {cache:'no-store'});
     if(!res.ok) throw new Error('no data.json yet');
     return await res.json();
   }catch(e){ return SAMPLE_DATA; }
+}
+
+function isNew(dateStr){
+  if(!dateStr) return false;
+  const d = new Date(dateStr);
+  const days = (Date.now() - d.getTime()) / 86400000;
+  return days >= 0 && days <= 7;
 }
 
 function renderStats(cases, updatedAt, isSample){
@@ -195,11 +282,12 @@ function renderStats(cases, updatedAt, isSample){
   cases.forEach(c => byType[c.type] = (byType[c.type]||0)+1);
   const typeCount = Object.keys(byType).length;
   const topType = Object.entries(byType).sort((a,b)=>b[1]-a[1])[0];
+  const newCount = cases.filter(c=>isNew(c.date)).length;
 
   document.getElementById('statsStrip').innerHTML = `
     <div class="stat"><div class="num">${cases.length}</div><div class="label">전체 사례 (금융투자)</div></div>
+    <div class="stat"><div class="num">${newCount}</div><div class="label">최근 7일 신규</div></div>
     <div class="stat"><div class="num">${analyzed}</div><div class="label">AI 분석 완료</div></div>
-    <div class="stat"><div class="num">${typeCount}</div><div class="label">세부 유형 수</div></div>
     <div class="stat"><div class="num" style="font-size:16px">${topType ? topType[0] : '—'}</div><div class="label">최다 유형${topType ? ` (${topType[1]}건)` : ''}</div></div>
   `;
 }
@@ -221,14 +309,24 @@ function renderMonthChart(stats){
     .filter(([m])=>m!=='unknown')
     .sort((a,b)=>a[0].localeCompare(b[0]))
     .slice(-12);
+  const el = document.getElementById('monthChart');
+  if(months.length===0){ el.innerHTML = `<div class="kw-empty">데이터 없음</div>`; return; }
+
+  const w = Math.max(360, months.length * 60), h = 140, padL = 24, padR = 16, padT = 16, padB = 26;
   const max = Math.max(1, ...months.map(e=>e[1]));
-  document.getElementById('monthChart').innerHTML = months.map(([month,count])=>`
-    <div class="bar-row">
-      <div class="bar-label">${month}</div>
-      <div class="bar-track"><div class="bar-fill" style="width:${(count/max*100).toFixed(0)}%; background:var(--brass);"></div></div>
-      <div class="bar-count">${count}</div>
-    </div>
-  `).join('') || `<div class="kw-empty">데이터 없음</div>`;
+  const stepX = (w - padL - padR) / Math.max(1, months.length - 1);
+  const scaleY = v => h - padB - (v / max) * (h - padT - padB);
+
+  const points = months.map(([m,c], i) => [padL + i*stepX, scaleY(c)]);
+  const path = points.map((p,i)=> (i===0?'M':'L') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' ');
+
+  const dots = points.map(([x,y], i) => `
+    <circle class="lc-dot" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3.5"><title>${months[i][0]}: ${months[i][1]}건</title></circle>
+    <text class="lc-count" x="${x.toFixed(1)}" y="${(y-8).toFixed(1)}" text-anchor="middle">${months[i][1]}</text>
+    <text class="lc-label" x="${x.toFixed(1)}" y="${h-8}" text-anchor="middle">${months[i][0].slice(2)}</text>
+  `).join('');
+
+  el.innerHTML = `<svg viewBox="0 0 ${w} ${h}" width="${w}" height="${h}"><path class="lc-line" d="${path}"/>${dots}</svg>`;
 }
 
 function renderKeywordCloud(stats){
@@ -246,9 +344,8 @@ function renderKeywordCloud(stats){
   el.querySelectorAll('.kw-chip').forEach(chip=>{
     chip.addEventListener('click', ()=>{
       document.getElementById('searchInput').value = chip.dataset.kw;
-      state.query = chip.dataset.kw;
+      state.query = chip.dataset.kw; currentPage = 1;
       applyFilters();
-      document.getElementById('caseList').scrollIntoView({behavior:'smooth'});
     });
   });
 }
@@ -256,10 +353,35 @@ function renderKeywordCloud(stats){
 function populateTypeFilter(cases){
   const types = [...new Set(cases.map(c=>c.type).filter(Boolean))].sort();
   const sel = document.getElementById('typeFilter');
+  sel.innerHTML = '<option value="">유형 전체</option>';
   types.forEach(t=>{
     const opt = document.createElement('option');
     opt.value = t; opt.textContent = t;
     sel.appendChild(opt);
+  });
+  sel.value = state.type;
+}
+
+function renderQuickFilters(cases){
+  const byType = {};
+  cases.forEach(c => byType[c.type] = (byType[c.type]||0)+1);
+  const top = Object.entries(byType).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  const el = document.getElementById('quickFilters');
+  el.innerHTML = `
+    <div class="chip ${!state.type ? 'active':''}" data-type="">전체</div>
+    ${top.map(([t,c])=>`<div class="chip ${state.type===t?'active':''}" data-type="${t}">${t} (${c})</div>`).join('')}
+    <div class="chip fav ${state.fav?'active':''}" id="favChip">★ 즐겨찾기만</div>
+  `;
+  el.querySelectorAll('.chip[data-type]').forEach(chip=>{
+    chip.addEventListener('click', ()=>{
+      state.type = chip.dataset.type; currentPage = 1;
+      document.getElementById('typeFilter').value = state.type;
+      applyFilters();
+    });
+  });
+  document.getElementById('favChip').addEventListener('click', ()=>{
+    state.fav = !state.fav; currentPage = 1;
+    applyFilters();
   });
 }
 
@@ -270,39 +392,52 @@ function matchesQuery(c, q){
 }
 
 function applyFilters(){
-  let list = allCases.filter(c=>{
-    if(state.region && c.region !== state.region) return false;
+  filteredCases = allCases.filter(c=>{
     if(state.type && c.type !== state.type) return false;
     if(state.query && !matchesQuery(c, state.query)) return false;
+    if(state.fav && !bookmarks.has(String(c.nttId||c.num))) return false;
     return true;
   });
-  list.sort((a,b)=> state.sort==='desc' ? (b.date||'').localeCompare(a.date||'') : (a.date||'').localeCompare(b.date||''));
-  renderList(list);
+  filteredCases.sort((a,b)=> state.sort==='desc' ? (b.date||'').localeCompare(a.date||'') : (a.date||'').localeCompare(b.date||''));
+  const maxPage = Math.max(1, Math.ceil(filteredCases.length / PAGE_SIZE));
+  if(currentPage > maxPage) currentPage = maxPage;
+  renderQuickFilters(allCases);
+  renderList();
+  renderPagination(maxPage);
+  syncURL();
 }
 
-function renderList(list){
-  document.getElementById('countRow').innerHTML = `<b>${list.length}건</b>의 사례가 조건에 일치합니다`;
+function renderList(){
+  const start = (currentPage-1) * PAGE_SIZE;
+  const pageItems = filteredCases.slice(start, start + PAGE_SIZE);
+
+  document.getElementById('countRow').innerHTML = `<b>${filteredCases.length}건</b>의 사례 · ${currentPage}/${Math.max(1,Math.ceil(filteredCases.length/PAGE_SIZE))}페이지`;
   const container = document.getElementById('caseList');
-  if(list.length===0){
+  if(pageItems.length===0){
     container.innerHTML = `<div class="empty">조건에 맞는 사례가 없습니다. 검색어나 필터를 조정해 보세요.</div>`;
     return;
   }
-  container.innerHTML = list.map((c,idx)=>{
+  container.innerHTML = pageItems.map((c)=>{
     const a = c.analysis;
+    const key = String(c.nttId||c.num);
+    const bookmarked = bookmarks.has(key);
     return `
-    <div class="case ${REGION_CLASS[c.region]||''}" data-idx="${idx}">
+    <div class="case" data-key="${key}">
       <div class="case-head">
         <div class="case-id">#${c.num||'—'}</div>
         <div class="case-body">
           <div class="case-tags">
-            <span class="tag">${c.region||''}</span>
             <span class="tag">${c.type||''}</span>
+            ${isNew(c.date) ? '<span class="tag new">NEW</span>' : ''}
             ${a ? '<span class="tag ai">AI 분석 완료</span>' : ''}
           </div>
           <div class="case-title">${c.title}</div>
           <div class="case-meta">${c.date||''} · ${c.dept||''}</div>
         </div>
-        <div class="expand-arrow">▾</div>
+        <div class="case-side">
+          <button class="star-btn ${bookmarked?'active':''}" data-key="${key}" title="즐겨찾기">${bookmarked ? '★' : '☆'}</button>
+          <div class="expand-arrow">▾</div>
+        </div>
       </div>
       <div class="case-analysis">
         ${a ? `
@@ -312,6 +447,7 @@ function renderList(list){
             ${a.consumer_lesson ? `<div class="analysis-row"><b>시사점</b>${a.consumer_lesson}</div>` : ''}
             ${(a.keywords&&a.keywords.length) ? `<div class="analysis-kw">${a.keywords.map(k=>`<span class="tag">${k}</span>`).join('')}</div>` : ''}
           </div>
+          <div class="ai-disclaimer">※ 위 요약은 AI가 자동 생성한 참고용 정보이며 법적 효력이 없습니다.</div>
         ` : `<div class="no-analysis">아직 AI 분석 전입니다. ai_analyze.py가 다음 실행에서 채워줍니다.</div>`}
         <a class="case-link" href="${c.url||'#'}" target="_blank" rel="noopener">금감원 원문 보기 →</a>
       </div>
@@ -319,15 +455,70 @@ function renderList(list){
   `}).join('');
 
   container.querySelectorAll('.case-head').forEach(head=>{
-    head.addEventListener('click', ()=> head.closest('.case').classList.toggle('open'));
+    head.addEventListener('click', (e)=>{
+      if(e.target.closest('.star-btn')) return;
+      head.closest('.case').classList.toggle('open');
+    });
+  });
+  container.querySelectorAll('.star-btn').forEach(btn=>{
+    btn.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      const key = btn.dataset.key;
+      if(bookmarks.has(key)) bookmarks.delete(key); else bookmarks.add(key);
+      localStorage.setItem('fss_bookmarks', JSON.stringify([...bookmarks]));
+      btn.classList.toggle('active');
+      btn.textContent = bookmarks.has(key) ? '★' : '☆';
+      if(state.fav) applyFilters();
+    });
   });
 }
 
-document.getElementById('searchInput').addEventListener('input', e=>{ state.query = e.target.value; applyFilters(); });
-document.getElementById('typeFilter').addEventListener('change', e=>{ state.type = e.target.value; applyFilters(); });
+function renderPagination(maxPage){
+  const el = document.getElementById('pagination');
+  if(maxPage <= 1){ el.innerHTML = ''; return; }
+  let btns = [];
+  btns.push(`<button class="page-btn" data-page="${currentPage-1}" ${currentPage===1?'disabled':''}>‹ 이전</button>`);
+  const range = 2;
+  for(let p=1; p<=maxPage; p++){
+    if(p===1 || p===maxPage || Math.abs(p-currentPage)<=range){
+      btns.push(`<button class="page-btn ${p===currentPage?'active':''}" data-page="${p}">${p}</button>`);
+    }else if(Math.abs(p-currentPage)===range+1){
+      btns.push(`<span style="color:var(--slate)">…</span>`);
+    }
+  }
+  btns.push(`<button class="page-btn" data-page="${currentPage+1}" ${currentPage===maxPage?'disabled':''}>다음 ›</button>`);
+  el.innerHTML = btns.join('');
+  el.querySelectorAll('.page-btn[data-page]').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      currentPage = parseInt(b.dataset.page, 10);
+      renderList();
+      renderPagination(maxPage);
+      syncURL();
+      document.getElementById('caseList').scrollIntoView({behavior:'smooth'});
+    });
+  });
+}
+
+document.getElementById('searchInput').addEventListener('input', e=>{ state.query = e.target.value; currentPage=1; applyFilters(); });
+document.getElementById('typeFilter').addEventListener('change', e=>{ state.type = e.target.value; currentPage=1; applyFilters(); });
 document.getElementById('sortOrder').addEventListener('change', e=>{ state.sort = e.target.value; applyFilters(); });
+document.getElementById('shareBtn').addEventListener('click', async ()=>{
+  syncURL();
+  try{
+    await navigator.clipboard.writeText(location.href);
+    const btn = document.getElementById('shareBtn');
+    const orig = btn.textContent;
+    btn.textContent = '✅ 복사됨';
+    setTimeout(()=> btn.textContent = orig, 1500);
+  }catch(e){ alert(location.href); }
+});
 
 (async function init(){
+  applyTheme(localStorage.getItem('fss_theme') || 'light');
+  loadStateFromURL();
+  document.getElementById('searchInput').value = state.query;
+  document.getElementById('sortOrder').value = state.sort;
+
   const data = await loadData();
   const isSample = data === SAMPLE_DATA;
   allCases = data.cases || [];
