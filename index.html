@@ -110,9 +110,9 @@
 <body>
 
 <header>
-  <div class="eyebrow">FSS · 금융분쟁조정위원회</div>
-  <h1>분쟁조정사례 대장</h1>
-  <p class="sub">금융감독원 분쟁조정사례를 매일 수집·AI 분석해 한 곳에서 검색·열람합니다</p>
+  <div class="eyebrow">FSS · 금융분쟁조정위원회 · 금융투자 분야</div>
+  <h1>금융투자 분쟁조정사례 대장</h1>
+  <p class="sub">금융감독원 금융투자 분쟁조정사례를 매일 수집·AI 분석해 한 곳에서 검색·열람합니다</p>
   <div class="updated" id="updatedAt">최종 업데이트 확인 중…</div>
 </header>
 
@@ -144,13 +144,6 @@
       <option value="desc">최신순</option>
       <option value="asc">오래된순</option>
     </select>
-  </div>
-
-  <div class="tabs" id="regionTabs">
-    <div class="tab active" data-region="">전체</div>
-    <div class="tab" data-region="은행ㆍ중소서민">은행ㆍ중소서민</div>
-    <div class="tab" data-region="보험">보험</div>
-    <div class="tab" data-region="금융투자">금융투자</div>
   </div>
 
   <div class="count-row" id="countRow"></div>
@@ -197,16 +190,17 @@ function renderStats(cases, updatedAt, isSample){
     ? '⚠ 샘플 데이터 표시 중 — 크롤러+AI 분석 실행 후 data/data.json이 생성되면 자동 교체됩니다'
     : `최종 업데이트: ${new Date(updatedAt).toLocaleString('ko-KR')}`;
 
-  const byRegion = {};
-  cases.forEach(c => byRegion[c.region] = (byRegion[c.region]||0)+1);
   const analyzed = cases.filter(c=>c.analysis).length;
+  const byType = {};
+  cases.forEach(c => byType[c.type] = (byType[c.type]||0)+1);
+  const typeCount = Object.keys(byType).length;
+  const topType = Object.entries(byType).sort((a,b)=>b[1]-a[1])[0];
 
   document.getElementById('statsStrip').innerHTML = `
-    <div class="stat"><div class="num">${cases.length}</div><div class="label">전체 사례</div></div>
-    <div class="stat"><div class="num">${byRegion['은행ㆍ중소서민']||0}</div><div class="label">은행ㆍ중소서민</div></div>
-    <div class="stat"><div class="num">${byRegion['보험']||0}</div><div class="label">보험</div></div>
-    <div class="stat"><div class="num">${byRegion['금융투자']||0}</div><div class="label">금융투자</div></div>
+    <div class="stat"><div class="num">${cases.length}</div><div class="label">전체 사례 (금융투자)</div></div>
     <div class="stat"><div class="num">${analyzed}</div><div class="label">AI 분석 완료</div></div>
+    <div class="stat"><div class="num">${typeCount}</div><div class="label">세부 유형 수</div></div>
+    <div class="stat"><div class="num" style="font-size:16px">${topType ? topType[0] : '—'}</div><div class="label">최다 유형${topType ? ` (${topType[1]}건)` : ''}</div></div>
   `;
 }
 
@@ -332,14 +326,6 @@ function renderList(list){
 document.getElementById('searchInput').addEventListener('input', e=>{ state.query = e.target.value; applyFilters(); });
 document.getElementById('typeFilter').addEventListener('change', e=>{ state.type = e.target.value; applyFilters(); });
 document.getElementById('sortOrder').addEventListener('change', e=>{ state.sort = e.target.value; applyFilters(); });
-document.getElementById('regionTabs').addEventListener('click', e=>{
-  const tab = e.target.closest('.tab');
-  if(!tab) return;
-  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
-  tab.classList.add('active');
-  state.region = tab.dataset.region;
-  applyFilters();
-});
 
 (async function init(){
   const data = await loadData();
