@@ -2,7 +2,8 @@
 """
 data/data.json의 각 사례에 대해:
   1) hwp 첨부파일을 다운로드해 본문 텍스트 추출 (실패하면 목록 요약글로 대체)
-  2) Gemini 무료 API(gemini-2.5-flash-lite)로 쟁점/결정요지/소비자 시사점/키워드 생성
+  2) Gemini 무료 API(gemini-flash-lite-latest)로 상세 분석(사건개요/양측주장/판단근거/
+     관련법령/결정요지/시사점/키워드) 생성
   3) 결과를 case["analysis"]에 저장
 
 이미 analysis가 있는 사례는 건너뜁니다 (호출 절약 + 재실행 안전).
@@ -15,6 +16,7 @@ data/data.json의 각 사례에 대해:
 사용법:
     python ai_analyze.py                # data/data.json 전체 처리
     python ai_analyze.py --limit 20      # 테스트로 20건만
+    python ai_analyze.py --reanalyze     # 기존 analysis도 새 형식으로 다시 생성
 """
 
 import argparse
@@ -29,7 +31,7 @@ import requests
 from google import genai
 
 DATA_PATH = "data/data.json"
-MODEL = "gemini-flash-lite-latest"  # 구글이 최신 버전으로 자동 연결해주는 별칭
+MODEL = "gemini-flash-lite-latest"  # 무료 티어에서 일일 한도가 가장 넉넉한 모델
 
 HEADERS = {
     "User-Agent": (
@@ -39,18 +41,24 @@ HEADERS = {
 }
 
 SYSTEM_PROMPT = """당신은 금융 분쟁조정 사례를 분석하는 어시스턴트입니다.
-주어진 금융감독원 분쟁조정 사례 텍스트를 읽고 아래 JSON 형식으로만 답하세요.
-다른 설명이나 마크다운 코드블록 없이 순수 JSON만 출력하세요.
+주어진 금융감독원 분쟁조정 사례 텍스트를 읽고 아래 JSON 형식으로만, 최대한 상세하고
+구체적으로 답하세요. 다른 설명이나 마크다운 코드블록 없이 순수 JSON만 출력하세요.
 
 {
-  "issue": "쟁점을 1~2문장으로 (무엇이 다투어졌는지)",
-  "decision": "조정위원회의 결정 요지를 1~2문장으로",
-  "consumer_lesson": "일반 금융소비자가 얻을 수 있는 시사점 1문장",
-  "keywords": ["키워드1", "키워드2", "키워드3"]
+  "background": "사건 개요를 3~4문장으로. 누가(신청인 유형), 언제, 어떤 금융상품/거래를 했고 무슨 문제가 발생했는지 구체적으로",
+  "claimant_argument": "신청인(금융소비자) 측 주장을 2~3문장으로 구체적으로",
+  "respondent_argument": "피신청인(금융회사) 측 주장 또는 항변을 2~3문장으로 구체적으로",
+  "issue": "핵심 쟁점을 2~3문장으로, 무엇이 법적/사실적으로 다투어졌는지",
+  "reasoning": "조정위원회가 어떤 근거로 판단했는지 3~5문장으로. 관련 법령·약관·판례가 언급되어 있다면 반드시 포함",
+  "decision": "최종 결정 요지를 2~3문장으로. 배상비율이나 금액이 언급되어 있다면 반드시 포함",
+  "related_law": "관련 법령, 약관 조항, 감독규정 등을 알 수 있는 범위에서 나열 (모르면 빈 문자열)",
+  "consumer_lesson": "일반 금융소비자가 얻을 수 있는 실질적 시사점을 2~3문장으로",
+  "keywords": ["키워드1", "키워드2", "키워드3", "키워드4"]
 }
 
-keywords는 3~5개, 명사형 짧은 단어(예: "불완전판매", "청약철회", "보이스피싱", "실손보험금")로 작성하세요.
-텍스트가 너무 짧거나 정보가 부족하면 알 수 있는 범위 내에서만 작성하고, 모르는 내용은 지어내지 마세요.
+keywords는 4~6개, 명사형 짧은 단어(예: "불완전판매", "청약철회", "보이스피싱", "설명의무위반")로 작성하세요.
+텍스트에 없는 내용은 절대 지어내지 말고, "본문에서 확인되지 않음" 등으로 명시하세요.
+텍스트가 너무 짧아 특정 항목을 채울 수 없으면 해당 항목은 빈 문자열로 두세요.
 """
 
 
@@ -78,7 +86,7 @@ def get_source_text(case: dict) -> str:
         if att["url"].lower().endswith(".hwp") or "fileDown" in att["url"]:
             text = extract_hwp_text(att["url"])
             if len(text.strip()) > 50:
-                return text[:6000]
+                return text[:12000]  # 상세 분석을 위해 앞부분을 더 넉넉히 사용
     if case.get("summary"):
         return case["summary"]
     return case["title"]
@@ -97,13 +105,18 @@ def analyze_case(client, case: dict) -> dict:
     try:
         return json.loads(raw)
     except json.JSONDecodeError:
-        return {"issue": "", "decision": "", "consumer_lesson": "", "keywords": [], "raw": raw}
+        return {
+            "background": "", "claimant_argument": "", "respondent_argument": "",
+            "issue": "", "reasoning": "", "decision": "", "related_law": "",
+            "consumer_lesson": "", "keywords": [], "raw": raw,
+        }
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--limit", type=int, default=None, help="처리할 최대 건수 (테스트용)")
     parser.add_argument("--delay", type=float, default=4.2, help="무료 티어 분당 요청수 제한(RPM) 보호용 딜레이(초)")
+    parser.add_argument("--reanalyze", action="store_true", help="기존 analysis가 있어도 새 형식으로 다시 생성")
     args = parser.parse_args()
 
     api_key = os.environ.get("GEMINI_API_KEY")
@@ -114,11 +127,16 @@ def main():
     with open(DATA_PATH, "r", encoding="utf-8") as f:
         data = json.load(f)
 
-    todo = [c for c in data["cases"] if not c.get("analysis")]
+    if args.reanalyze:
+        todo = data["cases"]
+    else:
+        # 예전 형식(issue/decision/consumer_lesson만 있음)도 다시 채우도록 background 유무로 판단
+        todo = [c for c in data["cases"] if not c.get("analysis") or "background" not in c["analysis"]]
+
     if args.limit:
         todo = todo[:args.limit]
 
-    print(f"분석 대상: {len(todo)}건 (전체 {len(data['cases'])}건 중 미분석)")
+    print(f"분석 대상: {len(todo)}건 (전체 {len(data['cases'])}건 중)")
 
     for i, case in enumerate(todo, 1):
         try:
