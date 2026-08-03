@@ -29,7 +29,7 @@
     transition:background-color .2s ease, color .2s ease;
   }
   header{ background:var(--navy-deep); color:var(--paper); padding:36px 32px 28px; position:relative; overflow:hidden; }
-  header::after{ content:""; position:absolute; inset:0; background:repeating-linear-gradient(135deg, rgba(255,255,255,0.03) 0 2px, transparent 2px 14px); }
+  header::after{ content:""; position:absolute; inset:0; background:repeating-linear-gradient(135deg, rgba(255,255,255,0.03) 0 2px, transparent 2px 14px); pointer-events:none; }
   .header-top{ display:flex; justify-content:space-between; align-items:flex-start; position:relative; }
   .eyebrow{ font-family:'JetBrains Mono',monospace; letter-spacing:.18em; font-size:11px; color:var(--brass-soft); text-transform:uppercase; margin-bottom:10px; }
   h1{ font-family:'Noto Serif KR',serif; font-weight:700; font-size:clamp(26px,4vw,38px); margin:0 0 6px; }
