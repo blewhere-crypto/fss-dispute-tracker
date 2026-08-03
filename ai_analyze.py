@@ -26,6 +26,7 @@ import re
 import subprocess
 import tempfile
 import time
+from datetime import datetime, timedelta
 
 import requests
 from google import genai
@@ -117,6 +118,8 @@ def main():
     parser.add_argument("--limit", type=int, default=None, help="처리할 최대 건수 (테스트용)")
     parser.add_argument("--delay", type=float, default=4.2, help="무료 티어 분당 요청수 제한(RPM) 보호용 딜레이(초)")
     parser.add_argument("--reanalyze", action="store_true", help="기존 analysis가 있어도 새 형식으로 다시 생성")
+    parser.add_argument("--since-days", type=int, default=None, help="최근 N일 이내 등록된 사례만 대상으로 함 (예: 30)")
+    parser.add_argument("--ntt-id", default=None, help="이 nttId 하나만 강제로 재분석 (다른 필터 무시)")
     args = parser.parse_args()
 
     api_key = os.environ.get("GEMINI_API_KEY")
@@ -127,11 +130,22 @@ def main():
     with open(DATA_PATH, "r", encoding="utf-8") as f:
         data = json.load(f)
 
-    if args.reanalyze:
+    if args.ntt_id:
+        todo = [c for c in data["cases"] if str(c.get("nttId")) == str(args.ntt_id)]
+        if not todo:
+            raise SystemExit(f"nttId={args.ntt_id} 인 사례를 찾을 수 없습니다.")
+    elif args.reanalyze:
         todo = data["cases"]
     else:
         # 예전 형식(issue/decision/consumer_lesson만 있음)도 다시 채우도록 background 유무로 판단
         todo = [c for c in data["cases"] if not c.get("analysis") or "background" not in c["analysis"]]
+
+    # 무료 API 한도에 걸려 중간에 멈추더라도 최근 사례가 항상 먼저 채워지도록 최신순 정렬
+    todo.sort(key=lambda c: c.get("date", ""), reverse=True)
+
+    if args.since_days:
+        cutoff = (datetime.now() - timedelta(days=args.since_days)).strftime("%Y-%m-%d")
+        todo = [c for c in todo if c.get("date", "") >= cutoff]
 
     if args.limit:
         todo = todo[:args.limit]
