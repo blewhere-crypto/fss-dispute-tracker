@@ -229,10 +229,17 @@ const PAGE_SIZE = 15;
 // 재분석 버튼이 여는 GitHub Actions 워크플로 주소 (저장소를 옮기면 이 값만 바꾸면 됨)
 const REPO = "blewhere-crypto/fss-dispute-tracker";
 const ANALYZE_WORKFLOW_URL = `https://github.com/${REPO}/actions/workflows/analyze-single.yml`;
+
+// localStorage가 차단된 환경(file://로 직접 열었을 때 등)에서도 스크립트가 멈추지 않도록 보호
+const safeStorage = {
+  get(key, fallback){ try{ return localStorage.getItem(key) ?? fallback; }catch(e){ return fallback; } },
+  set(key, value){ try{ localStorage.setItem(key, value); }catch(e){ /* 무시: 저장만 안 될 뿐 앱은 계속 동작 */ } }
+};
+
 let allCases = [];
 let filteredCases = [];
 let currentPage = 1;
-let bookmarks = new Set(JSON.parse(localStorage.getItem('fss_bookmarks') || '[]'));
+let bookmarks = new Set(JSON.parse(safeStorage.get('fss_bookmarks', '[]')));
 let state = { type:"", query:"", sort:"desc", fav:false };
 
 // ---------- URL sync ----------
@@ -259,7 +266,7 @@ function syncURL(){
 function applyTheme(theme){
   document.documentElement.setAttribute('data-theme', theme);
   document.getElementById('themeToggle').textContent = theme === 'dark' ? '☀️ 라이트모드' : '🌙 다크모드';
-  localStorage.setItem('fss_theme', theme);
+  safeStorage.set('fss_theme', theme);
 }
 document.getElementById('themeToggle').addEventListener('click', ()=>{
   const cur = document.documentElement.getAttribute('data-theme');
@@ -481,7 +488,7 @@ function renderList(){
       e.stopPropagation();
       const key = btn.dataset.key;
       if(bookmarks.has(key)) bookmarks.delete(key); else bookmarks.add(key);
-      localStorage.setItem('fss_bookmarks', JSON.stringify([...bookmarks]));
+      safeStorage.set('fss_bookmarks', JSON.stringify([...bookmarks]));
       btn.classList.toggle('active');
       btn.textContent = bookmarks.has(key) ? '★' : '☆';
       if(state.fav) applyFilters();
@@ -544,7 +551,7 @@ document.getElementById('shareBtn').addEventListener('click', async ()=>{
 });
 
 (async function init(){
-  applyTheme(localStorage.getItem('fss_theme') || 'light');
+  applyTheme(safeStorage.get('fss_theme', 'light'));
   loadStateFromURL();
   document.getElementById('searchInput').value = state.query;
   document.getElementById('sortOrder').value = state.sort;
