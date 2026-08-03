@@ -127,6 +127,7 @@
     border-radius:20px; cursor:pointer;
   }
   .reanalyze-btn:hover{ background:var(--brass-soft); border-color:var(--brass); color:var(--ink); }
+  .reanalyze-btn:disabled{ opacity:.6; cursor:default; }
 
   .pagination{ display:flex; justify-content:center; align-items:center; gap:6px; margin-top:22px; flex-wrap:wrap; }
   .page-btn{ font-family:'JetBrains Mono',monospace; font-size:12.5px; padding:7px 12px; border:1px solid var(--paper-line); background:var(--card); border-radius:2px; cursor:pointer; color:var(--ink); min-width:36px; text-align:center; }
@@ -229,6 +230,9 @@ const PAGE_SIZE = 15;
 // 재분석 버튼이 여는 GitHub Actions 워크플로 주소 (저장소를 옮기면 이 값만 바꾸면 됨)
 const REPO = "blewhere-crypto/fss-dispute-tracker";
 const ANALYZE_WORKFLOW_URL = `https://github.com/${REPO}/actions/workflows/analyze-single.yml`;
+// ⚠️ 이 토큰은 "이 저장소의 Actions 실행 권한만" 있는 fine-grained PAT여야 합니다.
+// 공개 웹페이지 코드에 노출되므로, 절대 Contents/Admin 등 다른 권한을 주지 마세요.
+const GH_ACTIONS_TOKEN = "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";
 
 // localStorage가 차단된 환경(file://로 직접 열었을 때 등)에서도 스크립트가 멈추지 않도록 보호
 const safeStorage = {
@@ -472,7 +476,7 @@ function renderList(){
           <div class="ai-disclaimer">※ 위 요약은 AI가 자동 생성한 참고용 정보이며 법적 효력이 없습니다.</div>
         ` : `<div class="no-analysis">아직 AI 분석 전입니다. ai_analyze.py가 다음 실행에서 채워줍니다.</div>`}
         <a class="case-link" href="${c.url||'#'}" target="_blank" rel="noopener">금감원 원문 보기 →</a>
-        ${c.nttId ? `<button class="reanalyze-btn" data-ntt="${c.nttId}" title="클릭하면 사례 ID가 복사되고 GitHub 실행 화면이 열려요. 그 화면의 ntt_id 칸에 붙여넣고 Run workflow를 눌러주세요.">🔄 이 사례 재분석 요청</button>` : ''}
+        ${c.nttId ? `<button class="reanalyze-btn" data-ntt="${c.nttId}" title="클릭하면 바로 재분석이 시작돼요. 1~2분 후 새로고침하면 반영됩니다.">🔄 이 사례 재분석 실행</button>` : ''}
       </div>
     </div>
   `}).join('');
@@ -498,14 +502,31 @@ function renderList(){
     btn.addEventListener('click', async (e)=>{
       e.stopPropagation();
       const nttId = btn.dataset.ntt;
+      const original = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = '⏳ 요청 중…';
       try{
-        await navigator.clipboard.writeText(nttId);
-        btn.textContent = '✅ ID 복사됨 · GitHub 창 여는 중…';
+        const res = await fetch(`https://api.github.com/repos/${REPO}/actions/workflows/analyze-single.yml/dispatches`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${GH_ACTIONS_TOKEN}`,
+            'Accept': 'application/vnd.github+json',
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ ref: 'main', inputs: { ntt_id: String(nttId) } })
+        });
+        if(res.status === 204){
+          btn.textContent = '✅ 요청 완료! 1~2분 후 새로고침';
+        } else {
+          const errText = await res.text();
+          console.error('워크플로 실행 실패:', res.status, errText);
+          btn.textContent = '❌ 실패 (토큰/권한 확인 필요)';
+        }
       }catch(err){
-        btn.textContent = `ID: ${nttId} (직접 복사해주세요)`;
+        console.error(err);
+        btn.textContent = '❌ 요청 실패 (네트워크/토큰 확인)';
       }
-      setTimeout(()=>{ window.open(ANALYZE_WORKFLOW_URL, '_blank'); }, 600);
-      setTimeout(()=>{ btn.textContent = '🔄 이 사례 재분석 요청'; }, 4000);
+      setTimeout(()=>{ btn.textContent = original; btn.disabled = false; }, 6000);
     });
   });
 }
