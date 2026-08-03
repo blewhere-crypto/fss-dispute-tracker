@@ -120,6 +120,13 @@
   .no-analysis{ font-size:12.5px; color:var(--slate); font-style:italic; }
   .ai-disclaimer{ font-size:11px; color:var(--slate); font-style:italic; margin-top:10px; }
   .case-link{ display:inline-block; margin-top:10px; font-size:12.5px; color:var(--navy); text-decoration:underline; }
+  .reanalyze-btn{
+    display:inline-block; margin-top:10px; margin-left:12px;
+    font-family:'JetBrains Mono',monospace; font-size:11.5px; padding:5px 11px;
+    border:1px solid var(--paper-line); background:var(--card); color:var(--slate);
+    border-radius:20px; cursor:pointer;
+  }
+  .reanalyze-btn:hover{ background:var(--brass-soft); border-color:var(--brass); color:var(--ink); }
 
   .pagination{ display:flex; justify-content:center; align-items:center; gap:6px; margin-top:22px; flex-wrap:wrap; }
   .page-btn{ font-family:'JetBrains Mono',monospace; font-size:12.5px; padding:7px 12px; border:1px solid var(--paper-line); background:var(--card); border-radius:2px; cursor:pointer; color:var(--ink); min-width:36px; text-align:center; }
@@ -219,6 +226,9 @@ const SAMPLE_DATA = {
 };
 
 const PAGE_SIZE = 15;
+// 재분석 버튼이 여는 GitHub Actions 워크플로 주소 (저장소를 옮기면 이 값만 바꾸면 됨)
+const REPO = "blewhere-crypto/fss-dispute-tracker";
+const ANALYZE_WORKFLOW_URL = `https://github.com/${REPO}/actions/workflows/analyze-single.yml`;
 let allCases = [];
 let filteredCases = [];
 let currentPage = 1;
@@ -455,6 +465,7 @@ function renderList(){
           <div class="ai-disclaimer">※ 위 요약은 AI가 자동 생성한 참고용 정보이며 법적 효력이 없습니다.</div>
         ` : `<div class="no-analysis">아직 AI 분석 전입니다. ai_analyze.py가 다음 실행에서 채워줍니다.</div>`}
         <a class="case-link" href="${c.url||'#'}" target="_blank" rel="noopener">금감원 원문 보기 →</a>
+        ${c.nttId ? `<button class="reanalyze-btn" data-ntt="${c.nttId}" title="클릭하면 사례 ID가 복사되고 GitHub 실행 화면이 열려요. 그 화면의 ntt_id 칸에 붙여넣고 Run workflow를 눌러주세요.">🔄 이 사례 재분석 요청</button>` : ''}
       </div>
     </div>
   `}).join('');
@@ -474,6 +485,20 @@ function renderList(){
       btn.classList.toggle('active');
       btn.textContent = bookmarks.has(key) ? '★' : '☆';
       if(state.fav) applyFilters();
+    });
+  });
+  container.querySelectorAll('.reanalyze-btn').forEach(btn=>{
+    btn.addEventListener('click', async (e)=>{
+      e.stopPropagation();
+      const nttId = btn.dataset.ntt;
+      try{
+        await navigator.clipboard.writeText(nttId);
+        btn.textContent = '✅ ID 복사됨 · GitHub 창 여는 중…';
+      }catch(err){
+        btn.textContent = `ID: ${nttId} (직접 복사해주세요)`;
+      }
+      setTimeout(()=>{ window.open(ANALYZE_WORKFLOW_URL, '_blank'); }, 600);
+      setTimeout(()=>{ btn.textContent = '🔄 이 사례 재분석 요청'; }, 4000);
     });
   });
 }
