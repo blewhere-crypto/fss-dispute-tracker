@@ -66,23 +66,27 @@ keywords는 4~6개, 명사형 짧은 단어(예: "불완전판매", "청약철�
 
 
 def extract_hwp_text(url: str) -> str:
-    """hwp 파일을 다운로드해 hwp5txt로 텍스트 추출. 실패 시 빈 문자열(원인은 로그에 남김)."""
+    """hwp 파일을 다운로드해 LibreOffice로 텍스트 추출. 실패 시 빈 문자열(원인은 로그에 남김).
+    (예전에는 pyhwp/hwp5txt를 썼으나, 파이썬 3.11 환경에서 계속 깨져서 LibreOffice 방식으로 교체)"""
     try:
         resp = requests.get(url, headers=HEADERS, timeout=20)
         resp.raise_for_status()
-        with tempfile.NamedTemporaryFile(suffix=".hwp", delete=False) as tf:
-            tf.write(resp.content)
-            tmp_path = tf.name
-        try:
-            out = subprocess.run(["hwp5txt", tmp_path], capture_output=True, timeout=30)
-            if out.returncode == 0:
-                return out.stdout.decode("utf-8", errors="ignore")
+        with tempfile.TemporaryDirectory() as tmpdir:
+            hwp_path = os.path.join(tmpdir, "input.hwp")
+            with open(hwp_path, "wb") as f:
+                f.write(resp.content)
+            out = subprocess.run(
+                ["soffice", "--headless", "--convert-to", "txt:Text", "--outdir", tmpdir, hwp_path],
+                capture_output=True, timeout=60
+            )
+            txt_path = os.path.join(tmpdir, "input.txt")
+            if os.path.exists(txt_path):
+                with open(txt_path, "r", encoding="utf-8", errors="ignore") as f:
+                    return f.read()
             else:
-                print(f"hwp5txt 실패 (code={out.returncode}): {out.stderr.decode('utf-8', errors='ignore')[:300]}")
-        finally:
-            os.unlink(tmp_path)
+                print(f"LibreOffice 변환 실패 (code={out.returncode}): {out.stderr.decode('utf-8', errors='ignore')[:300]}")
     except Exception as e:
-        print(f"hwp 다운로드/추출 실패 ({url}): {e}")
+        print(f"hwp 다운로드/변환 실패 ({url}): {e}")
     return ""
 
 
@@ -142,7 +146,22 @@ def analyze_case(client, case: dict) -> dict:
         f"[사례 제목] {case['title']}\n[유형] {case['region']} / {case['type']}\n\n"
         f"[본문 또는 요약]\n{text}"
     )
-    resp = client.models.generate_content(model=MODEL, contents=prompt)
+    resp = None
+    last_err = None
+    for attempt in range(3):
+        try:
+            resp = client.models.generate_content(model=MODEL, contents=prompt)
+            break
+        except Exception as e:
+            last_err = e
+            if "UNAVAILABLE" in str(e) or "503" in str(e):
+                wait = 10 * (attempt + 1)
+                print(f"Gemini 서버 과부하, {wait}초 후 재시도 ({attempt+1}/3)…")
+                time.sleep(wait)
+            else:
+                raise
+    if resp is None:
+        raise last_err
     raw = (resp.text or "").strip()
     raw = re.sub(r"^```json|```$", "", raw, flags=re.MULTILINE).strip()
     try:
