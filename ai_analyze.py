@@ -29,10 +29,12 @@ import time
 from datetime import datetime, timedelta
 
 import requests
+from bs4 import BeautifulSoup
 from google import genai
 
 DATA_PATH = "data/data.json"
 MODEL = "gemini-flash-lite-latest"  # 무료 티어에서 일일 한도가 가장 넉넉한 모델
+BASE = "https://www.fss.or.kr/fss/bbs/B0000390"
 
 HEADERS = {
     "User-Agent": (
@@ -64,7 +66,7 @@ keywords는 4~6개, 명사형 짧은 단어(예: "불완전판매", "청약철�
 
 
 def extract_hwp_text(url: str) -> str:
-    """hwp 파일을 다운로드해 hwp5txt로 텍스트 추출. 실패 시 빈 문자열."""
+    """hwp 파일을 다운로드해 hwp5txt로 텍스트 추출. 실패 시 빈 문자열(원인은 로그에 남김)."""
     try:
         resp = requests.get(url, headers=HEADERS, timeout=20)
         resp.raise_for_status()
@@ -75,21 +77,61 @@ def extract_hwp_text(url: str) -> str:
             out = subprocess.run(["hwp5txt", tmp_path], capture_output=True, timeout=30)
             if out.returncode == 0:
                 return out.stdout.decode("utf-8", errors="ignore")
+            else:
+                print(f"hwp5txt 실패 (code={out.returncode}): {out.stderr.decode('utf-8', errors='ignore')[:300]}")
         finally:
             os.unlink(tmp_path)
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"hwp 다운로드/추출 실패 ({url}): {e}")
     return ""
 
 
+def fetch_detail_live(ntt_id: str):
+    """저장된 데이터에 첨부파일 정보가 없을 때, 상세페이지에서 즉시 다시 가져온다."""
+    result = {"summary": "", "attachments": []}
+    try:
+        params = {"nttId": ntt_id, "viewType": "BODY", "pageIndex": 1}
+        resp = requests.get(f"{BASE}/view.do", params=params, headers=HEADERS, timeout=15)
+        resp.raise_for_status()
+        resp.encoding = "utf-8"
+        soup = BeautifulSoup(resp.text, "html.parser")
+
+        for c in soup.select("div, p"):
+            text = c.get_text(" ", strip=True)
+            if len(text) > 30 and ("금융분쟁조정위원회" in text or "조정결정" in text or "등록합니다" in text):
+                result["summary"] = text
+                break
+
+        for a in soup.select("a[href*='fileDown.do']"):
+            href = a["href"]
+            name = a.get_text(strip=True)
+            if href.startswith("/"):
+                href = "https://www.fss.or.kr" + href
+            if name and href not in [x["url"] for x in result["attachments"]]:
+                result["attachments"].append({"name": name, "url": href})
+    except Exception as e:
+        print(f"상세페이지 재조회 실패 (nttId={ntt_id}): {e}")
+    return result
+
+
 def get_source_text(case: dict) -> str:
-    for att in case.get("attachments", []):
+    attachments = case.get("attachments", [])
+    summary = case.get("summary", "")
+
+    # 저장된 데이터에 첨부파일 정보가 없으면, 재분석 시 상세페이지에서 즉시 다시 가져온다
+    # (analyze-single.yml처럼 크롤링 없이 분석만 도는 경우 이게 없으면 제목만 갖고 분석하게 됨)
+    if not attachments and case.get("nttId"):
+        live = fetch_detail_live(case["nttId"])
+        attachments = live["attachments"]
+        summary = summary or live["summary"]
+
+    for att in attachments:
         if att["url"].lower().endswith(".hwp") or "fileDown" in att["url"]:
             text = extract_hwp_text(att["url"])
             if len(text.strip()) > 50:
                 return text[:12000]  # 상세 분석을 위해 앞부분을 더 넉넉히 사용
-    if case.get("summary"):
-        return case["summary"]
+    if summary:
+        return summary
     return case["title"]
 
 
