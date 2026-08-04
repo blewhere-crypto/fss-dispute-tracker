@@ -42,6 +42,10 @@ HEADERS = {
         "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
     )
 }
+DOWNLOAD_HEADERS = {
+    **HEADERS,
+    "Referer": "https://www.fss.or.kr/fss/bbs/B0000390/list.do",
+}
 
 SYSTEM_PROMPT = """당신은 금융 분쟁조정 사례를 분석하는 어시스턴트입니다.
 주어진 금융감독원 분쟁조정 사례 텍스트를 읽고 아래 JSON 형식으로만, 최대한 상세하고
@@ -69,8 +73,12 @@ def extract_hwp_text(url: str) -> str:
     """hwp 파일을 다운로드해 LibreOffice로 텍스트 추출. 실패 시 빈 문자열(원인은 로그에 남김).
     (예전에는 pyhwp/hwp5txt를 썼으나, 파이썬 3.11 환경에서 계속 깨져서 LibreOffice 방식으로 교체)"""
     try:
-        resp = requests.get(url, headers=HEADERS, timeout=20)
+        resp = requests.get(url, headers=DOWNLOAD_HEADERS, timeout=20)
         resp.raise_for_status()
+        content_type = resp.headers.get("Content-Type", "")
+        if "html" in content_type.lower() or resp.content[:15].lstrip().startswith(b"<"):
+            print(f"hwp 다운로드 실패: 실제 파일 대신 HTML이 반환됨 (Content-Type={content_type}, url={url})")
+            return ""
         with tempfile.TemporaryDirectory() as tmpdir:
             hwp_path = os.path.join(tmpdir, "input.hwp")
             with open(hwp_path, "wb") as f:
