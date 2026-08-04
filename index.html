@@ -166,7 +166,6 @@
       <p class="sub">금융감독원 금융투자 분쟁조정사례를 매일 수집·AI 분석해 한 곳에서 검색·열람합니다</p>
     </div>
     <div style="display:flex; gap:8px; flex-shrink:0;">
-      <button class="theme-toggle" id="tokenBtn">⚙️ API 토큰 설정</button>
       <button class="theme-toggle" id="themeToggle">🌙 다크모드</button>
     </div>
   </div>
@@ -241,21 +240,9 @@ const SAMPLE_DATA = {
 };
 
 const PAGE_SIZE = 15;
-// 재분석 버튼이 여는 GitHub Actions 워크플로 주소 (저장소를 옮기면 이 값만 바꾸면 됨)
 const REPO = "blewhere-crypto/fss-dispute-tracker";
-const ANALYZE_WORKFLOW_URL = `https://github.com/${REPO}/actions/workflows/analyze-single.yml`;
-// GitHub 토큰은 코드에 박아넣지 않고, 사용자가 이 화면에서 직접 입력해 브라우저에만 저장합니다.
-// 아래 값을 직접 채워두면(파일 업로드 방식으로 배포 시) 매번 입력할 필요가 없어요.
-// ⚠️ 이 값을 채운 index.html은 공개 페이지 코드에 토큰이 그대로 노출됩니다.
-// 반드시 "이 저장소의 Actions 실행 권한만" 있는 fine-grained PAT를 쓰세요.
-const GH_ACTIONS_TOKEN_DEFAULT = "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";
-
-function getToken(){
-  const stored = safeStorage.get('fss_gh_token', '');
-  if(stored) return stored; // ⚙️ 버튼으로 등록한 값이 있으면 그걸 우선 사용
-  return GH_ACTIONS_TOKEN_DEFAULT.startsWith('여기에_') ? '' : GH_ACTIONS_TOKEN_DEFAULT;
-}
-function setToken(t){ safeStorage.set('fss_gh_token', t.trim()); }
+// 재분석 요청을 대신 처리해주는 프록시 서버 (GitHub 토큰은 여기(서버)에만 안전하게 보관돼요)
+const PROXY_URL = "https://scarlet-falcon-2977.blewhere-crypto.deno.net";
 
 // localStorage가 차단된 환경(file://로 직접 열었을 때 등)에서도 스크립트가 멈추지 않도록 보호
 const safeStorage = {
@@ -298,18 +285,6 @@ function applyTheme(theme){
 document.getElementById('themeToggle').addEventListener('click', ()=>{
   const cur = document.documentElement.getAttribute('data-theme');
   applyTheme(cur === 'dark' ? 'light' : 'dark');
-});
-document.getElementById('tokenBtn').addEventListener('click', ()=>{
-  const existing = getToken();
-  const masked = existing ? `현재 저장된 토큰: ${existing.slice(0,10)}...(${existing.length}자)\n\n` : '';
-  const input = window.prompt(
-    masked + '재분석 실행에 쓸 GitHub 토큰을 붙여넣어 주세요.\n' +
-    '(github_pat_ 로 시작, fine-grained, Actions:Read and write 권한)\n' +
-    '비워두고 확인을 누르면 저장된 토큰이 삭제됩니다.'
-  );
-  if(input === null) return; // 취소
-  setToken(input);
-  alert(input.trim() ? '토큰이 이 브라우저에 저장되었습니다.' : '토큰이 삭제되었습니다.');
 });
 
 // ---------- data ----------
@@ -562,11 +537,6 @@ function fmtSec(s){
     btn.addEventListener('click', async (e)=>{
       e.stopPropagation();
       const nttId = btn.dataset.ntt;
-      const token = getToken();
-      if(!token){
-        alert('먼저 우측 상단 "⚙️ API 토큰 설정" 버튼으로 GitHub 토큰을 등록해주세요.');
-        return;
-      }
       const wrap = container.querySelector(`.progress-wrap[data-progress-for="${nttId}"]`);
       const statusEl = wrap.querySelector('.progress-status');
       const barEl = wrap.querySelector('.progress-inner');
@@ -588,26 +558,22 @@ function fmtSec(s){
       }, 1000);
 
       try{
-        const res = await fetch(`https://api.github.com/repos/${REPO}/actions/workflows/analyze-single.yml/dispatches`, {
+        const res = await fetch(PROXY_URL, {
           method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Accept': 'application/vnd.github+json',
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ ref: 'main', inputs: { ntt_id: String(nttId) } })
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nttId: String(nttId) })
         });
-        if(res.status !== 204){
-          const errText = await res.text();
-          console.error('워크플로 실행 실패:', res.status, errText);
-          statusEl.textContent = '❌ 요청 실패 (토큰/권한 확인 필요)';
+        const resBody = await res.json().catch(()=>({}));
+        if(!res.ok || !resBody.ok){
+          console.error('재분석 요청 실패:', res.status, resBody);
+          statusEl.textContent = '❌ 요청 실패 (프록시 서버 확인 필요)';
           barEl.className = 'progress-inner error';
           clearInterval(tickTimer);
           btn.disabled = false;
           return;
         }
         statusEl.textContent = '⏳ 실행 대기중…';
-        const ok = await pollWorkflowRun(token, triggeredAt, statusEl, barEl);
+        const ok = await pollWorkflowRun(triggeredAt, statusEl, barEl);
         clearInterval(tickTimer);
         const totalSec = (Date.now() - triggeredAt) / 1000;
         if(ok){
@@ -631,17 +597,18 @@ function fmtSec(s){
 // 반환값: 성공적으로 완료됐으면 true, 실패/타임아웃이면 false
 function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
 
-async function pollWorkflowRun(token, triggeredAt, statusEl, barEl){
+async function pollWorkflowRun(triggeredAt, statusEl, barEl){
   const timeoutMs = 4 * 60 * 1000; // 4분 넘게 안 끝나면 폴링 포기
   const start = Date.now();
-  const headers = { Authorization: `Bearer ${token}`, Accept: 'application/vnd.github+json' };
+  // Public 저장소라 인증 없이도 실행 상태 조회가 가능해요 (인증 없는 요청은 시간당 한도가
+  // 낮아서, 6초 간격으로 여유 있게 확인해요)
 
   while(Date.now() - start < timeoutMs){
-    await sleep(4000);
+    await sleep(6000);
     try{
       const runsRes = await fetch(
         `https://api.github.com/repos/${REPO}/actions/workflows/analyze-single.yml/runs?per_page=1`,
-        { headers }
+        { headers: { Accept: 'application/vnd.github+json' } }
       );
       const runsData = await runsRes.json();
       const run = runsData.workflow_runs && runsData.workflow_runs[0];
