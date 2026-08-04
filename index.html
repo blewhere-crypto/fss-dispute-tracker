@@ -245,7 +245,16 @@ const PAGE_SIZE = 15;
 const REPO = "blewhere-crypto/fss-dispute-tracker";
 const ANALYZE_WORKFLOW_URL = `https://github.com/${REPO}/actions/workflows/analyze-single.yml`;
 // GitHub 토큰은 코드에 박아넣지 않고, 사용자가 이 화면에서 직접 입력해 브라우저에만 저장합니다.
-function getToken(){ return safeStorage.get('fss_gh_token', ''); }
+// 아래 값을 직접 채워두면(파일 업로드 방식으로 배포 시) 매번 입력할 필요가 없어요.
+// ⚠️ 이 값을 채운 index.html은 공개 페이지 코드에 토큰이 그대로 노출됩니다.
+// 반드시 "이 저장소의 Actions 실행 권한만" 있는 fine-grained PAT를 쓰세요.
+const GH_ACTIONS_TOKEN_DEFAULT = "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";
+
+function getToken(){
+  const stored = safeStorage.get('fss_gh_token', '');
+  if(stored) return stored; // ⚙️ 버튼으로 등록한 값이 있으면 그걸 우선 사용
+  return GH_ACTIONS_TOKEN_DEFAULT.startsWith('여기에_') ? '' : GH_ACTIONS_TOKEN_DEFAULT;
+}
 function setToken(t){ safeStorage.set('fss_gh_token', t.trim()); }
 
 // localStorage가 차단된 환경(file://로 직접 열었을 때 등)에서도 스크립트가 멈추지 않도록 보호
