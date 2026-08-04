@@ -2,7 +2,7 @@ name: Daily FSS Dispute Case Scrape
 
 on:
   schedule:
-    - cron: "9 21 * * *"   # UTC 21:09 = KST 06:09 (정각을 피해 지연/누락 확률을 줄임)
+    - cron: "17 21 * * *"   # UTC 21:09 = KST 06:09 (정각을 피해 지연/누락 확률을 줄임)
   workflow_dispatch: {}
 
 permissions:
