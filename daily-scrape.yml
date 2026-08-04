@@ -28,7 +28,12 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Install LibreOffice (for hwp text extraction)
-        run: sudo apt-get update && sudo apt-get install -y libreoffice
+        run: sudo apt-get update && sudo apt-get install -y libreoffice default-jre-headless
+
+      - name: Install H2Orestart extension (hwp format support for LibreOffice)
+        run: |
+          wget -qO /tmp/H2Orestart.oxt https://github.com/ebandal/H2Orestart/releases/latest/download/H2Orestart.oxt
+          unopkg add --shared --suppress-license /tmp/H2Orestart.oxt
 
       - name: Scrape latest case list
         run: python scraper.py --detail
