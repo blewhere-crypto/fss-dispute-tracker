@@ -2,11 +2,15 @@ name: Daily FSS Dispute Case Scrape
 
 on:
   schedule:
-    - cron: "9 21 * * *"   # 매일 UTC 23:00 = KST 08:00
+    - cron: "9 21 * * *"   # UTC 21:09 = KST 06:09 (정각을 피해 지연/누락 확률을 줄임)
   workflow_dispatch: {}
 
 permissions:
   contents: write
+
+concurrency:
+  group: daily-scrape
+  cancel-in-progress: false   # 겹치면 동시에 돌리지 않고 순서대로 대기
 
 jobs:
   scrape:
@@ -23,6 +27,9 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
+      - name: Install LibreOffice (for hwp text extraction)
+        run: sudo apt-get update && sudo apt-get install -y libreoffice
+
       - name: Scrape latest case list
         run: python scraper.py --detail
 
@@ -37,4 +44,8 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add data/data.json
           git diff --staged --quiet && echo "변경 없음" || git commit -m "chore: daily data + analysis update $(date -u +%Y-%m-%d)"
-          git push
+          for i in 1 2 3; do
+            git pull --rebase origin main && git push && break
+            echo "푸시 재시도 ($i)..."
+            sleep 5
+          done
