@@ -70,15 +70,22 @@ keywords는 4~6개, 명사형 짧은 단어(예: "불완전판매", "청약철�
 
 
 def extract_hwp_text(url: str) -> str:
-    """hwp 파일을 다운로드해 LibreOffice로 텍스트 추출. 실패 시 빈 문자열(원인은 로그에 남김).
-    (예전에는 pyhwp/hwp5txt를 썼으나, 파이썬 3.11 환경에서 계속 깨져서 LibreOffice 방식으로 교체)"""
+    """hwp 파일을 다운로드해 LibreOffice(+H2Orestart 확장)로 텍스트 추출.
+    실패 시 빈 문자열을 반환하며, 원인 진단에 필요한 정보를 로그에 남긴다."""
     try:
         resp = requests.get(url, headers=DOWNLOAD_HEADERS, timeout=20)
         resp.raise_for_status()
         content_type = resp.headers.get("Content-Type", "")
+        size = len(resp.content)
+        preview = resp.content[:24]
+        print(f"다운로드 완료: {size} bytes, Content-Type={content_type}, 앞부분={preview!r}")
+
         if "html" in content_type.lower() or resp.content[:15].lstrip().startswith(b"<"):
-            print(f"hwp 다운로드 실패: 실제 파일 대신 HTML이 반환됨 (Content-Type={content_type}, url={url})")
+            print(f"hwp 다운로드 실패: 실제 파일 대신 HTML이 반환됨 (url={url})")
             return ""
+        if size < 1000:
+            print(f"hwp 다운로드 의심: 파일 크기가 비정상적으로 작음 ({size} bytes)")
+
         with tempfile.TemporaryDirectory() as tmpdir:
             hwp_path = os.path.join(tmpdir, "input.hwp")
             with open(hwp_path, "wb") as f:
@@ -90,9 +97,14 @@ def extract_hwp_text(url: str) -> str:
             txt_path = os.path.join(tmpdir, "input.txt")
             if os.path.exists(txt_path):
                 with open(txt_path, "r", encoding="utf-8", errors="ignore") as f:
-                    return f.read()
+                    text = f.read()
+                if text.strip():
+                    return text
+                print("LibreOffice 변환은 됐지만 추출된 텍스트가 비어있음")
             else:
-                print(f"LibreOffice 변환 실패 (code={out.returncode}): {out.stderr.decode('utf-8', errors='ignore')[:300]}")
+                stdout = out.stdout.decode("utf-8", errors="ignore")[:400]
+                stderr = out.stderr.decode("utf-8", errors="ignore")[:400]
+                print(f"LibreOffice 변환 실패 (exit={out.returncode})\nSTDOUT: {stdout}\nSTDERR: {stderr}")
     except Exception as e:
         print(f"hwp 다운로드/변환 실패 ({url}): {e}")
     return ""
