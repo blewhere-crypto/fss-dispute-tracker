@@ -154,7 +154,10 @@
       <h1>금융투자 분쟁조정사례 대장</h1>
       <p class="sub">금융감독원 금융투자 분쟁조정사례를 매일 수집·AI 분석해 한 곳에서 검색·열람합니다</p>
     </div>
-    <button class="theme-toggle" id="themeToggle">🌙 다크모드</button>
+    <div style="display:flex; gap:8px; flex-shrink:0;">
+      <button class="theme-toggle" id="tokenBtn">⚙️ API 토큰 설정</button>
+      <button class="theme-toggle" id="themeToggle">🌙 다크모드</button>
+    </div>
   </div>
   <div class="updated" id="updatedAt">최종 업데이트 확인 중…</div>
 </header>
@@ -230,9 +233,9 @@ const PAGE_SIZE = 15;
 // 재분석 버튼이 여는 GitHub Actions 워크플로 주소 (저장소를 옮기면 이 값만 바꾸면 됨)
 const REPO = "blewhere-crypto/fss-dispute-tracker";
 const ANALYZE_WORKFLOW_URL = `https://github.com/${REPO}/actions/workflows/analyze-single.yml`;
-// ⚠️ 이 토큰은 "이 저장소의 Actions 실행 권한만" 있는 fine-grained PAT여야 합니다.
-// 공개 웹페이지 코드에 노출되므로, 절대 Contents/Admin 등 다른 권한을 주지 마세요.
-const GH_ACTIONS_TOKEN = "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";
+// GitHub 토큰은 코드에 박아넣지 않고, 사용자가 이 화면에서 직접 입력해 브라우저에만 저장합니다.
+function getToken(){ return safeStorage.get('fss_gh_token', ''); }
+function setToken(t){ safeStorage.set('fss_gh_token', t.trim()); }
 
 // localStorage가 차단된 환경(file://로 직접 열었을 때 등)에서도 스크립트가 멈추지 않도록 보호
 const safeStorage = {
@@ -275,6 +278,18 @@ function applyTheme(theme){
 document.getElementById('themeToggle').addEventListener('click', ()=>{
   const cur = document.documentElement.getAttribute('data-theme');
   applyTheme(cur === 'dark' ? 'light' : 'dark');
+});
+document.getElementById('tokenBtn').addEventListener('click', ()=>{
+  const existing = getToken();
+  const masked = existing ? `현재 저장된 토큰: ${existing.slice(0,10)}...(${existing.length}자)\n\n` : '';
+  const input = window.prompt(
+    masked + '재분석 실행에 쓸 GitHub 토큰을 붙여넣어 주세요.\n' +
+    '(github_pat_ 로 시작, fine-grained, Actions:Read and write 권한)\n' +
+    '비워두고 확인을 누르면 저장된 토큰이 삭제됩니다.'
+  );
+  if(input === null) return; // 취소
+  setToken(input);
+  alert(input.trim() ? '토큰이 이 브라우저에 저장되었습니다.' : '토큰이 삭제되었습니다.');
 });
 
 // ---------- data ----------
@@ -502,6 +517,11 @@ function renderList(){
     btn.addEventListener('click', async (e)=>{
       e.stopPropagation();
       const nttId = btn.dataset.ntt;
+      const token = getToken();
+      if(!token){
+        alert('먼저 우측 상단 "⚙️ API 토큰 설정" 버튼으로 GitHub 토큰을 등록해주세요.');
+        return;
+      }
       const original = btn.textContent;
       btn.disabled = true;
       btn.textContent = '⏳ 요청 중…';
@@ -509,7 +529,7 @@ function renderList(){
         const res = await fetch(`https://api.github.com/repos/${REPO}/actions/workflows/analyze-single.yml/dispatches`, {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${GH_ACTIONS_TOKEN}`,
+            'Authorization': `Bearer ${token}`,
             'Accept': 'application/vnd.github+json',
             'Content-Type': 'application/json'
           },
