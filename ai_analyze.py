@@ -26,12 +26,13 @@ import re
 import subprocess
 import tempfile
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import requests
 from bs4 import BeautifulSoup
 from google import genai
 
+KST = timezone(timedelta(hours=9))
 DATA_PATH = "data/data.json"
 MODEL = "gemini-flash-lite-latest"  # 무료 티어에서 일일 한도가 가장 넉넉한 모델
 BASE = "https://www.fss.or.kr/fss/bbs/B0000390"
@@ -241,6 +242,7 @@ def main():
     for i, case in enumerate(todo, 1):
         try:
             case["analysis"] = analyze_case(client, case)
+            case["analysis"]["analyzed_at"] = datetime.now(KST).isoformat()
             print(f"[{i}/{len(todo)}] 완료: {case['title'][:40]}")
         except Exception as e:
             print(f"[{i}/{len(todo)}] 실패: {case['title'][:40]} ({e})")
