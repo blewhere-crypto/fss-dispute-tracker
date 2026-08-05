@@ -296,6 +296,18 @@ async function loadData(){
   }catch(e){ return SAMPLE_DATA; }
 }
 
+// data.json을 다시 불러와 화면 전체(통계/차트/목록)를 갱신. 페이지 새로고침 없이 최신 데이터를 반영할 때 사용
+async function applyNewData(data){
+  const isSample = data === SAMPLE_DATA;
+  allCases = data.cases || [];
+  renderStats(allCases, data.updated_at, isSample);
+  renderTypeChart(data.stats || {});
+  renderMonthChart(data.stats || {});
+  renderKeywordCloud(data.stats || {});
+  populateTypeFilter(allCases);
+  applyFilters();
+}
+
 function isNew(dateStr){
   if(!dateStr) return false;
   const d = new Date(dateStr);
@@ -474,6 +486,7 @@ function renderList(){
         ${a ? `
           <div class="analysis-grid">
             ${a.background ? `<div class="analysis-row"><b>사건개요</b>${a.background}</div>` : ''}
+            ${a.product_info ? `<div class="analysis-row"><b>상품내용</b>${a.product_info}</div>` : ''}
             ${a.claimant_argument ? `<div class="analysis-row"><b>신청인 주장</b>${a.claimant_argument}</div>` : ''}
             ${a.respondent_argument ? `<div class="analysis-row"><b>피신청인 주장</b>${a.respondent_argument}</div>` : ''}
             ${a.issue ? `<div class="analysis-row"><b>쟁점</b>${a.issue}</div>` : ''}
@@ -537,6 +550,8 @@ function fmtSec(s){
     btn.addEventListener('click', async (e)=>{
       e.stopPropagation();
       const nttId = btn.dataset.ntt;
+      const beforeCase = allCases.find(x => String(x.nttId) === String(nttId));
+      const beforeAnalysisStr = JSON.stringify((beforeCase && beforeCase.analysis) || null);
       const wrap = container.querySelector(`.progress-wrap[data-progress-for="${nttId}"]`);
       const statusEl = wrap.querySelector('.progress-status');
       const barEl = wrap.querySelector('.progress-inner');
@@ -579,6 +594,10 @@ function fmtSec(s){
         if(ok){
           recordDuration(totalSec);
           timeEl.textContent = `총 소요 시간 ${fmtSec(totalSec)}`;
+          statusEl.textContent = '📥 최신 데이터 반영 대기중… (GitHub Pages 배포)';
+          const refreshed = await waitAndRefreshAfterReanalyze(nttId, beforeAnalysisStr, statusEl);
+          if(!refreshed) console.warn('데이터 갱신 확인 시간 초과 — 최신 데이터로 한 번 더 갱신을 시도했지만 반영 확인은 못했어요.');
+          return; // 화면이 이미 새로 그려졌으므로 아래 btn.disabled 갱신은 건너뜀 (해당 DOM은 교체됨)
         } else {
           timeEl.textContent = `경과 ${fmtSec(totalSec)}`;
         }
@@ -596,6 +615,35 @@ function fmtSec(s){
 // 재분석 요청 이후 실제 GitHub Actions 실행 상태를 몇 초마다 확인해 진행바에 반영
 // 반환값: 성공적으로 완료됐으면 true, 실패/타임아웃이면 false
 function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
+
+// 워크플로가 끝나도 GitHub Pages 재배포가 몇~수십 초 걸릴 수 있어, data.json의 해당 사례
+// analysis가 실제로 바뀔 때까지 기다렸다가 페이지 새로고침 없이 화면을 갱신한다.
+// 반환값: 갱신된 데이터를 반영했으면 true, 시간 초과로 포기했으면 false
+async function waitAndRefreshAfterReanalyze(nttId, beforeAnalysisStr, statusEl){
+  const maxWaitMs = 90 * 1000;
+  const start = Date.now();
+  while(Date.now() - start < maxWaitMs){
+    await sleep(4000);
+    try{
+      const data = await loadData();
+      if(data === SAMPLE_DATA) continue;
+      const updated = (data.cases||[]).find(x => String(x.nttId) === String(nttId));
+      const afterAnalysisStr = JSON.stringify(updated && updated.analysis || null);
+      if(afterAnalysisStr !== beforeAnalysisStr){
+        await applyNewData(data);
+        const card = document.querySelector(`.case[data-key="${nttId}"]`);
+        if(card){
+          card.classList.add('open');
+          card.scrollIntoView({behavior:'smooth', block:'center'});
+        }
+        return true;
+      }
+    }catch(err){ console.error('데이터 갱신 확인 실패:', err); }
+  }
+  // 시간 초과: 그래도 최신 데이터로 한 번 더 갱신을 시도
+  try{ await applyNewData(await loadData()); }catch(err){ console.error(err); }
+  return false;
+}
 
 async function pollWorkflowRun(triggeredAt, statusEl, barEl){
   const timeoutMs = 4 * 60 * 1000; // 4분 넘게 안 끝나면 폴링 포기
@@ -690,14 +738,7 @@ document.getElementById('shareBtn').addEventListener('click', async ()=>{
   document.getElementById('sortOrder').value = state.sort;
 
   const data = await loadData();
-  const isSample = data === SAMPLE_DATA;
-  allCases = data.cases || [];
-  renderStats(allCases, data.updated_at, isSample);
-  renderTypeChart(data.stats || {});
-  renderMonthChart(data.stats || {});
-  renderKeywordCloud(data.stats || {});
-  populateTypeFilter(allCases);
-  applyFilters();
+  await applyNewData(data);
 })();
 </script>
 </body>

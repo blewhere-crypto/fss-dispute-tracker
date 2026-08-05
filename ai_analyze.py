@@ -53,6 +53,7 @@ SYSTEM_PROMPT = """당신은 금융 분쟁조정 사례를 분석하는 어시�
 
 {
   "background": "사건 개요를 3~4문장으로. 누가(신청인 유형), 언제, 어떤 금융상품/거래를 했고 무슨 문제가 발생했는지 구체적으로",
+  "product_info": "사건에 등장하는 금융상품(펀드명, 신탁상품, 파생결합증권 등)의 종류·구조·운용방식·만기·수익구조·투자대상 등을 2~4문장으로 구체적으로. 특정 상품이 언급되지 않으면 빈 문자열",
   "claimant_argument": "신청인(금융소비자) 측 주장을 2~3문장으로 구체적으로",
   "respondent_argument": "피신청인(금융회사) 측 주장 또는 항변을 2~3문장으로 구체적으로",
   "issue": "핵심 쟁점을 2~3문장으로, 무엇이 법적/사실적으로 다투어졌는지",
@@ -192,7 +193,7 @@ def analyze_case(client, case: dict) -> dict:
         return json.loads(raw)
     except json.JSONDecodeError:
         return {
-            "background": "", "claimant_argument": "", "respondent_argument": "",
+            "background": "", "product_info": "", "claimant_argument": "", "respondent_argument": "",
             "issue": "", "reasoning": "", "decision": "", "related_law": "",
             "consumer_lesson": "", "keywords": [], "raw": raw,
         }
