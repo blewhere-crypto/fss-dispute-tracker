@@ -9,14 +9,14 @@
   @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&display=swap');
 
   :root{
-    --ink:#14203a; --navy:#0046ff; --navy-deep:#00113d;
+    --ink:#14203a; --navy:#0046ff; --navy-deep:#0046ff;
     --paper:#f3f6fd; --paper-line:#dce5f7; --card:#ffffff;
     --brass:#a67c3d; --brass-soft:#efe3cb; --rust:#a63d2f; --slate:#586080;
     --invest:#0046ff; --sage:#5c7a5c; --sage-bg:#eaf1ea;
     --new-bg:#a63d2f; --new-fg:#ffffff;
   }
   [data-theme="dark"]{
-    --ink:#e7ecfb; --navy:#7da2ff; --navy-deep:#060b1e;
+    --ink:#e7ecfb; --navy:#7da2ff;
     --paper:#0e1424; --paper-line:#232b45; --card:#161c30;
     --brass:#d8b177; --brass-soft:#3a3222; --rust:#e08a75; --slate:#98a2c0;
     --invest:#7da2ff; --sage:#8fbf8f; --sage-bg:#213024;
@@ -29,15 +29,15 @@
     background-size:100% 42px;
     transition:background-color .2s ease, color .2s ease;
   }
-  header{ background:var(--navy-deep); color:var(--paper); padding:36px 32px 28px; position:relative; overflow:hidden; }
+  header{ background:var(--navy-deep); color:#ffffff; padding:36px 32px 28px; position:relative; overflow:hidden; }
   header::after{ content:""; position:absolute; inset:0; background:repeating-linear-gradient(135deg, rgba(255,255,255,0.03) 0 2px, transparent 2px 14px); pointer-events:none; }
   .header-top{ display:flex; justify-content:space-between; align-items:flex-start; position:relative; }
-  .eyebrow{ font-family:'JetBrains Mono',monospace; letter-spacing:.18em; font-size:11px; color:var(--brass-soft); text-transform:uppercase; margin-bottom:10px; }
+  .eyebrow{ font-family:'JetBrains Mono',monospace; letter-spacing:.18em; font-size:11px; color:#efe3cb; text-transform:uppercase; margin-bottom:10px; }
   h1{ font-family:'Pretendard',sans-serif; font-weight:800; letter-spacing:-.01em; font-size:clamp(26px,4vw,38px); margin:0 0 6px; }
   header p.sub{ margin:0; color:#c7cde0; font-size:14px; }
-  .updated{ font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--brass-soft); margin-top:16px; position:relative; }
+  .updated{ font-family:'JetBrains Mono',monospace; font-size:12px; color:#efe3cb; margin-top:16px; position:relative; }
   .theme-toggle{
-    background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.2); color:var(--paper);
+    background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.2); color:#ffffff;
     border-radius:20px; padding:8px 14px; font-size:12px; font-family:'JetBrains Mono',monospace;
     cursor:pointer; flex-shrink:0;
   }
@@ -129,6 +129,10 @@
   }
   .reanalyze-btn:hover{ background:var(--brass-soft); border-color:var(--brass); color:var(--ink); }
   .reanalyze-btn:disabled{ opacity:.6; cursor:default; }
+  .analyzed-at{
+    display:inline-block; margin-top:10px; margin-left:10px;
+    font-family:'JetBrains Mono',monospace; font-size:11.5px; color:var(--slate);
+  }
   .progress-wrap{ margin-top:10px; max-width:320px; }
   .progress-status{ font-family:'JetBrains Mono',monospace; font-size:11.5px; color:var(--slate); margin-bottom:6px; }
   .progress-outer{ height:6px; background:var(--paper); border:1px solid var(--paper-line); border-radius:4px; overflow:hidden; }
@@ -480,7 +484,7 @@ function renderList(){
             ${a ? '<span class="tag ai">AI 분석 완료</span>' : ''}
           </div>
           <div class="case-title">${c.title}</div>
-          <div class="case-meta">${c.date||''} · ${c.dept||''}${a && a.analyzed_at ? ` · 최종 분석 ${formatAnalyzedAt(a.analyzed_at)}` : ''}</div>
+          <div class="case-meta">${c.date||''} · ${c.dept||''}</div>
         </div>
         <div class="case-side">
           <button class="star-btn ${bookmarked?'active':''}" data-key="${key}" title="즐겨찾기">${bookmarked ? '★' : '☆'}</button>
@@ -505,6 +509,7 @@ function renderList(){
         ` : `<div class="no-analysis">아직 AI 분석 전입니다. ai_analyze.py가 다음 실행에서 채워줍니다.</div>`}
         <a class="case-link" href="${c.url||'#'}" target="_blank" rel="noopener">금감원 원문 보기 →</a>
         ${c.nttId ? `<button class="reanalyze-btn" data-ntt="${c.nttId}" title="클릭하면 바로 재분석이 시작돼요. 진행 상황이 아래에 표시됩니다.">🔄 이 사례 재분석 실행</button>` : ''}
+        ${(c.nttId && a && a.analyzed_at) ? `<span class="analyzed-at">최종 분석 ${formatAnalyzedAt(a.analyzed_at)}</span>` : ''}
         ${c.nttId ? `<div class="progress-wrap" data-progress-for="${c.nttId}" style="display:none;">
           <div class="progress-status">대기중…</div>
           <div class="progress-outer"><div class="progress-inner"></div></div>
