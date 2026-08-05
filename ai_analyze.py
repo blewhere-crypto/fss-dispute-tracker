@@ -91,12 +91,12 @@ def extract_hwp_text(url: str) -> str:
             with open(hwp_path, "wb") as f:
                 f.write(resp.content)
             out = subprocess.run(
-                ["soffice", "--headless", "--convert-to", "txt:Text", "--outdir", tmpdir, hwp_path],
+                ["soffice", "--headless", "--convert-to", "txt:Text (encoded):UTF8", "--outdir", tmpdir, hwp_path],
                 capture_output=True, timeout=60
             )
             txt_path = os.path.join(tmpdir, "input.txt")
             if os.path.exists(txt_path):
-                with open(txt_path, "r", encoding="utf-8", errors="ignore") as f:
+                with open(txt_path, "r", encoding="utf-8-sig") as f:
                     text = f.read()
                 if text.strip():
                     return text
