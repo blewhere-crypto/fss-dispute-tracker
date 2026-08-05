@@ -314,7 +314,12 @@ async function applyNewData(data){
 }
 
 function formatAnalyzedAt(iso){
-  try{ return new Date(iso).toLocaleDateString('ko-KR'); }catch(e){ return ''; }
+  try{
+    return new Date(iso).toLocaleString('ko-KR', {
+      year:'numeric', month:'numeric', day:'numeric',
+      hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:false
+    });
+  }catch(e){ return ''; }
 }
 
 function isNew(dateStr){
