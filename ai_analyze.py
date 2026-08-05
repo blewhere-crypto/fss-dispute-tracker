@@ -91,7 +91,11 @@ def extract_hwp_text(url: str) -> str:
             with open(hwp_path, "wb") as f:
                 f.write(resp.content)
             out = subprocess.run(
-                ["soffice", "--headless", "--convert-to", "txt:Text (encoded):UTF8", "--outdir", tmpdir, hwp_path],
+                [
+                    "soffice", "--headless",
+                    "-env:UserInstallation=file:///tmp/lo_profile",
+                    "--convert-to", "txt:Text (encoded):UTF8", "--outdir", tmpdir, hwp_path,
+                ],
                 capture_output=True, timeout=60
             )
             txt_path = os.path.join(tmpdir, "input.txt")
