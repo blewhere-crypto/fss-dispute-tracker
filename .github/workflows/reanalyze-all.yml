@@ -1,0 +1,51 @@
+name: Reanalyze All Cases
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: daily-scrape   # 정기 크롤링과 같은 그룹으로 묶어서 동시 push 충돌 방지
+  cancel-in-progress: false
+
+jobs:
+  reanalyze-all:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Install LibreOffice (for hwp text extraction)
+        run: sudo apt-get update && sudo apt-get install -y libreoffice libreoffice-java-common default-jre-headless
+
+      - name: Install H2Orestart extension (hwp format support for LibreOffice)
+        run: |
+          wget -qO /tmp/H2Orestart.oxt https://github.com/ebandal/H2Orestart/releases/latest/download/H2Orestart.oxt
+          sudo unopkg add --shared --suppress-license /tmp/H2Orestart.oxt
+
+      - name: Reanalyze all cases
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: python ai_analyze.py --reanalyze
+
+      - name: Commit updated data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/data.json
+          git diff --staged --quiet && echo "변경 없음" || git commit -m "chore: reanalyze all cases (product_info/analyzed_at 백필)"
+          for i in 1 2 3; do
+            git pull --rebase origin main && git push && break
+            echo "푸시 재시도 ($i)..."
+            sleep 5
+          done
