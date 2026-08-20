@@ -5,9 +5,10 @@
 - 상세: https://www.fss.or.kr/fss/bbs/B0000390/view.do?nttId=...
 
 사용법:
-    python scraper.py                 # 전체 크롤링 후 data/data.json 저장
+    python scraper.py                 # 기본 대상(금융투자 전체 + 은행ㆍ중소서민>기타) 크롤링 후 저장
     python scraper.py --max-pages 3   # 테스트용으로 앞 3페이지만
     python scraper.py --detail        # 상세 페이지(요약글 + hwp 첨부링크)까지 수집
+    python scraper.py --category A --cl2 A3   # 특정 카테고리 하나만 크롤링
 
 주의:
 - 사이트 구조는 2026-07 기준으로 확인한 것이며, 금감원이 페이지 구조를 바꾸면
@@ -36,11 +37,21 @@ HEADERS = {
 CATEGORY_MAP = {"": "전체", "A": "은행ㆍ중소서민", "B": "보험", "C": "금융투자"}
 KST = timezone(timedelta(hours=9))
 
+# 카테고리 인자 없이 실행할 때(정기 크롤링) 기본으로 긁어오는 대상.
+# 금융투자 분야 전체 + 은행ㆍ중소서민 중 "기타"(DLF/KIKO/라임 등 복합금융상품 손해배상 사례가
+# 여기 분류돼 있어 금융투자 분쟁조정사례 대장 취지에 맞음)
+DEFAULT_CATEGORIES = [
+    {"cl1Cd": "C", "cl2Cd": "", "label": "금융투자"},
+    {"cl1Cd": "A", "cl2Cd": "A3", "label": "은행ㆍ중소서민-기타"},
+]
 
-def fetch_list_page(session: requests.Session, page_index: int = 1, cl1cd: str = "") -> str:
+
+def fetch_list_page(session: requests.Session, page_index: int = 1, cl1cd: str = "", cl2cd: str = "") -> str:
     params = {"viewType": "BODY", "pageIndex": page_index}
     if cl1cd:
         params["cl1Cd"] = cl1cd
+    if cl2cd:
+        params["cl2Cd"] = cl2cd
     resp = session.get(f"{BASE}/list.do", params=params, headers=HEADERS, timeout=15)
     resp.raise_for_status()
     resp.encoding = "utf-8"
@@ -124,17 +135,17 @@ def fetch_detail(session: requests.Session, ntt_id: str):
     return result
 
 
-def crawl_all(max_pages=None, with_detail=False, delay=0.6, cl1cd="C"):
+def crawl_all(max_pages=None, with_detail=False, delay=0.6, cl1cd="C", cl2cd=""):
     """total_pages 텍스트 파싱에 의존하지 않고, 빈 페이지가 나올 때까지 계속 다음
     페이지를 읽어온다 (사이트 문구가 바뀌어도 안전하게 동작하도록).
-    cl1cd 기본값 "C"는 금융투자 분야만 가져오도록 하는 필터입니다
-    (""=전체, "A"=은행ㆍ중소서민, "B"=보험, "C"=금융투자)."""
+    cl1cd(1차 분류: ""=전체, "A"=은행ㆍ중소서민, "B"=보험, "C"=금융투자)와
+    cl2cd(2차 분류, 예: "A3"=은행ㆍ중소서민>기타)로 특정 카테고리만 좁혀서 가져올 수 있다."""
     session = requests.Session()
     all_rows = []
     page = 1
     hard_cap = max_pages or 300  # 안전장치: 무한루프 방지용 상한
     while page <= hard_cap:
-        html = fetch_list_page(session, page, cl1cd=cl1cd)
+        html = fetch_list_page(session, page, cl1cd=cl1cd, cl2cd=cl2cd)
         rows = parse_list(html)
         if not rows:
             break
@@ -170,8 +181,11 @@ def main():
     parser.add_argument("--max-pages", type=int, default=None)
     parser.add_argument("--detail", action="store_true")
     parser.add_argument("--out", default="data/data.json")
-    parser.add_argument("--category", default="C",
-                         help='""=전체, "A"=은행ㆍ중소서민, "B"=보험, "C"=금융투자(기본값)')
+    parser.add_argument("--category", default=None,
+                         help='cl1Cd 값을 직접 지정해 이 카테고리 하나만 크롤링 '
+                              '(""=전체, "A"=은행ㆍ중소서민, "B"=보험, "C"=금융투자). '
+                              '지정하지 않으면 기본 대상(금융투자 전체 + 은행ㆍ중소서민>기타)을 모두 크롤링')
+    parser.add_argument("--cl2", default="", help="--category와 함께 쓰는 2차 분류(cl2Cd) 값, 예: A3")
     args = parser.parse_args()
 
     import os
@@ -186,7 +200,30 @@ def main():
         except Exception:
             pass
 
-    cases = crawl_all(max_pages=args.max_pages, with_detail=args.detail, cl1cd=args.category)
+    categories = (
+        [{"cl1Cd": args.category, "cl2Cd": args.cl2, "label": args.category or "전체"}]
+        if args.category is not None
+        else DEFAULT_CATEGORIES
+    )
+
+    cases = []
+    seen_ntt = set()
+    for cat in categories:
+        rows = crawl_all(
+            max_pages=args.max_pages, with_detail=args.detail,
+            cl1cd=cat["cl1Cd"], cl2cd=cat["cl2Cd"],
+        )
+        added = 0
+        for row in rows:
+            ntt = row.get("nttId")
+            if ntt and ntt in seen_ntt:
+                continue
+            if ntt:
+                seen_ntt.add(ntt)
+            cases.append(row)
+            added += 1
+        print(f"[{cat['label']}] {added}건 수집")
+
     for c in cases:
         old = existing.get(c.get("nttId"))
         if old and old.get("analysis"):
